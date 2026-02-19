@@ -3,6 +3,8 @@ Central configuration for transcription project
 Default settings for Whisper models, GPU, and output formatting
 """
 
+from __future__ import annotations
+
 from pathlib import Path
 
 # Base directory
@@ -49,16 +51,16 @@ GPU_INFO = {
 }
 
 
-def get_interview_paths(name, base_dir=None):
+def get_interview_paths(name: str, base_dir: Path | None = None) -> dict[str, Path]:
     """
     Generate standardized paths for an interview
 
     Args:
-        name (str): Interviewee name
-        base_dir (Path, optional): Base directory (defaults to BASE_DIR)
+        name: Interviewee name
+        base_dir: Base directory (defaults to BASE_DIR)
 
     Returns:
-        dict: Dictionary with paths for audio, transcriptions, segments
+        Dictionary with paths for audio, transcriptions, segments
     """
     if base_dir is None:
         base_dir = BASE_DIR
@@ -74,18 +76,20 @@ def get_interview_paths(name, base_dir=None):
     }
 
 
-def get_output_filename(name, language, reviewed=False, is_report=False):
+def get_output_filename(
+    name: str, language: str, reviewed: bool = False, is_report: bool = False
+) -> str:
     """
     Generate standardized output filename
 
     Args:
-        name (str): Interviewee name
-        language (str): Language code (da, en)
-        reviewed (bool): Whether this is a reviewed version
-        is_report (bool): Whether this is a report file
+        name: Interviewee name
+        language: Language code (da, en)
+        reviewed: Whether this is a reviewed version
+        is_report: Whether this is a report file
 
     Returns:
-        str: Standardized filename
+        Standardized filename
     """
     if is_report:
         return f"{name}{TRANSCRIPTION_SUFFIX}_{language}{REPORT_SUFFIX}.txt"

@@ -21,13 +21,14 @@ Audio transcription workspace using GPU-accelerated Whisper models.
 
 ## Available Scripts
 
-- `transcribe_faster_gpu.py` - GPU-accelerated transcription (main script)
-- `transcribe_faster_gpu_segments_2_3.py` - Segment-specific transcription
-- `transcribe_danish.py` - Danish language transcription
+- `scripts/transcribe.py` - Unified transcription script (single file or multi-segment)
+- `scripts/postprocess.py` - Post-processing with language-specific corrections
+- `scripts/extract_audio.py` - Video-to-audio extraction via ffmpeg
+- `scripts/cleanup_originals.py` - Remove original transcriptions, keep reviewed versions
 
 ## Key Dependencies
 
-- PyTorch (CUDA 12.6 support)
+- PyTorch (CUDA 12.8+ for sm_120 support)
 - faster-whisper (GPU acceleration)
 - ctranslate2 (inference backend)
 - See requirements.txt for complete list

@@ -3,6 +3,8 @@ Correction dictionaries and review flags for post-processing transcriptions
 Separated by language (English and Danish)
 """
 
+from __future__ import annotations
+
 # English transcription corrections
 CORRECTIONS_EN = {
     # AI model/tool names
@@ -81,15 +83,15 @@ REVIEW_FLAGS_DA = [
 ]
 
 
-def get_corrections(language="da"):
+def get_corrections(language: str = "da") -> dict[str, str]:
     """
     Get corrections dictionary for specified language
 
     Args:
-        language (str): Language code ("en" or "da")
+        language: Language code ("en" or "da")
 
     Returns:
-        dict: Corrections dictionary for the language
+        Corrections dictionary mapping wrong text to correct text
     """
     if language == "en":
         return CORRECTIONS_EN
@@ -99,15 +101,15 @@ def get_corrections(language="da"):
         raise ValueError(f"Unsupported language: {language}. Use 'en' or 'da'")
 
 
-def get_review_flags(language="da"):
+def get_review_flags(language: str = "da") -> list[str]:
     """
     Get review flags list for specified language
 
     Args:
-        language (str): Language code ("en" or "da")
+        language: Language code ("en" or "da")
 
     Returns:
-        list: Review flags for the language
+        List of phrases to flag for manual review
     """
     if language == "en":
         return REVIEW_FLAGS_EN

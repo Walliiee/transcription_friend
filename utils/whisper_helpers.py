@@ -3,12 +3,16 @@ Shared Whisper model utilities for transcription
 Provides model loading, timestamp formatting, and transcription functions
 """
 
-from faster_whisper import WhisperModel
+from __future__ import annotations
+
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
+
+from faster_whisper import WhisperModel
 
 
-def format_timestamp(seconds):
+def format_timestamp(seconds: float) -> str:
     """
     Convert seconds to HH:MM:SS format
 
@@ -18,25 +22,30 @@ def format_timestamp(seconds):
     Returns:
         str: Formatted timestamp string (HH:MM:SS)
     """
-    td = timedelta(seconds=seconds)
-    hours = td.seconds // 3600
-    minutes = (td.seconds % 3600) // 60
-    secs = td.seconds % 60
+    total = int(timedelta(seconds=seconds).total_seconds())
+    hours = total // 3600
+    minutes = (total % 3600) // 60
+    secs = total % 60
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
-def load_model(model_size="medium", device_preference="cuda", gpu_compute_type="float16", cpu_compute_type="int8"):
+def load_model(
+    model_size: str = "medium",
+    device_preference: str = "cuda",
+    gpu_compute_type: str = "float16",
+    cpu_compute_type: str = "int8",
+) -> tuple[WhisperModel, str]:
     """
     Load Whisper model with automatic GPU/CPU fallback
 
     Args:
-        model_size (str): Model size (tiny, base, small, medium, large)
-        device_preference (str): Preferred device ("cuda" or "cpu")
-        gpu_compute_type (str): Compute type for GPU (default: "float16")
-        cpu_compute_type (str): Compute type for CPU (default: "int8")
+        model_size: Model size (tiny, base, small, medium, large)
+        device_preference: Preferred device ("cuda" or "cpu")
+        gpu_compute_type: Compute type for GPU (default: "float16")
+        cpu_compute_type: Compute type for CPU (default: "int8")
 
     Returns:
-        tuple: (model, device_used) where device_used is "cuda" or "cpu"
+        Tuple of (model, device_used) where device_used is "cuda" or "cpu"
     """
     print(f"Loading Whisper {model_size} model...")
 
@@ -56,22 +65,28 @@ def load_model(model_size="medium", device_preference="cuda", gpu_compute_type="
     return model, "cpu"
 
 
-def transcribe_file(model, audio_file, language="da", beam_size=5, vad_filter=True, word_timestamps=True):
+def transcribe_file(
+    model: WhisperModel,
+    audio_file: str | Path,
+    language: str = "da",
+    beam_size: int = 5,
+    vad_filter: bool = True,
+    word_timestamps: bool = True,
+) -> tuple[str, dict[str, Any]]:
     """
     Transcribe a single audio file with the given parameters
 
     Args:
         model: Loaded WhisperModel instance
-        audio_file (str or Path): Path to audio file
-        language (str): Language code (e.g., "da", "en")
-        beam_size (int): Beam size for transcription (default: 5)
-        vad_filter (bool): Enable voice activity detection (default: True)
-        word_timestamps (bool): Generate word-level timestamps (default: True)
+        audio_file: Path to audio file
+        language: Language code (e.g., "da", "en")
+        beam_size: Beam size for transcription (default: 5)
+        vad_filter: Enable voice activity detection (default: True)
+        word_timestamps: Generate word-level timestamps (default: True)
 
     Returns:
-        tuple: (formatted_transcription, info_dict)
-            formatted_transcription (str): Transcription with timestamps
-            info_dict (dict): Metadata including language, duration, probability
+        Tuple of (formatted_transcription, info_dict) where info_dict contains
+        language, language_probability, and duration.
     """
     audio_path = Path(audio_file)
     print(f"Transcribing {audio_path.name}...")
@@ -106,14 +121,18 @@ def transcribe_file(model, audio_file, language="da", beam_size=5, vad_filter=Tr
     return formatted_transcription, info_dict
 
 
-def save_transcription(transcription, output_path, metadata=None):
+def save_transcription(
+    transcription: str,
+    output_path: str | Path,
+    metadata: dict[str, Any] | None = None,
+) -> None:
     """
     Save transcription to file with optional metadata header
 
     Args:
-        transcription (str): The formatted transcription text
-        output_path (str or Path): Output file path
-        metadata (dict, optional): Metadata to include in header
+        transcription: The formatted transcription text
+        output_path: Output file path
+        metadata: Metadata to include in header.
             Supported keys: 'audio_file', 'language', 'duration', 'interviewee', 'interviewer'
     """
     output_path = Path(output_path)

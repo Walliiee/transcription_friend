@@ -2,15 +2,16 @@
 Shared utilities for audio transcription workspace
 """
 
-from .whisper_helpers import format_timestamp, load_model, transcribe_file
-from .corrections import CORRECTIONS_EN, CORRECTIONS_DA, REVIEW_FLAGS_EN, REVIEW_FLAGS_DA
+from .corrections import CORRECTIONS_DA, CORRECTIONS_EN, REVIEW_FLAGS_DA, REVIEW_FLAGS_EN
+from .whisper_helpers import format_timestamp, load_model, save_transcription, transcribe_file
 
 __all__ = [
-    'format_timestamp',
-    'load_model',
-    'transcribe_file',
-    'CORRECTIONS_EN',
-    'CORRECTIONS_DA',
-    'REVIEW_FLAGS_EN',
-    'REVIEW_FLAGS_DA',
+    "CORRECTIONS_DA",
+    "CORRECTIONS_EN",
+    "REVIEW_FLAGS_DA",
+    "REVIEW_FLAGS_EN",
+    "format_timestamp",
+    "load_model",
+    "save_transcription",
+    "transcribe_file",
 ]

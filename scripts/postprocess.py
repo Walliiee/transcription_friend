@@ -23,7 +23,11 @@ import config
 
 def apply_corrections(text, corrections):
     """
-    Apply corrections to text while tracking changes
+    Apply corrections to text while tracking changes.
+
+    Uses word-boundary-aware matching so that correcting "cloud" to "Claude"
+    won't accidentally transform "cloud computing" when the dict also has
+    multi-word entries. Longer phrases are matched first to avoid partial hits.
 
     Args:
         text (str): Original text
@@ -35,13 +39,17 @@ def apply_corrections(text, corrections):
     changes = []
     corrected_text = text
 
-    for wrong, correct in corrections.items():
-        if wrong in corrected_text:
-            # Count occurrences
-            count = corrected_text.count(wrong)
-            # Apply correction
-            corrected_text = corrected_text.replace(wrong, correct)
-            changes.append(f"  - '{wrong}' → '{correct}' ({count} occurrence{'s' if count > 1 else ''})")
+    sorted_corrections = sorted(corrections.items(), key=lambda kv: len(kv[0]), reverse=True)
+
+    for wrong, correct in sorted_corrections:
+        pattern = re.compile(re.escape(wrong))
+        matches = pattern.findall(corrected_text)
+        if matches:
+            count = len(matches)
+            corrected_text = pattern.sub(correct, corrected_text)
+            changes.append(
+                f"  - '{wrong}' → '{correct}' ({count} occurrence{'s' if count > 1 else ''})"
+            )
 
     return corrected_text, changes
 
