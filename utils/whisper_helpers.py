@@ -7,9 +7,10 @@ from __future__ import annotations
 
 from datetime import timedelta
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from faster_whisper import WhisperModel
+if TYPE_CHECKING:
+    from faster_whisper import WhisperModel
 
 
 def format_timestamp(seconds: float) -> str:
@@ -47,6 +48,8 @@ def load_model(
     Returns:
         Tuple of (model, device_used) where device_used is "cuda" or "cpu"
     """
+    from faster_whisper import WhisperModel
+
     print(f"Loading Whisper {model_size} model...")
 
     if device_preference == "cuda":

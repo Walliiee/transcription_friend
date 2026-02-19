@@ -1,15 +1,29 @@
-from faster_whisper import WhisperModel
-import torch
+"""GPU availability and model loading tests (require CUDA hardware)."""
 
-print("Checking GPU availability...")
-print(f"CUDA available: {torch.cuda.is_available()}")
-if torch.cuda.is_available():
-    print(f"GPU: {torch.cuda.get_device_name(0)}")
-    print(f"Compute capability: {torch.cuda.get_device_capability(0)}")
+import pytest
 
-print("\nTrying to load small model on GPU...")
-try:
+torch = pytest.importorskip("torch")
+
+
+@pytest.mark.gpu
+def test_cuda_is_available():
+    assert torch.cuda.is_available(), "CUDA is not available on this machine"
+
+
+@pytest.mark.gpu
+def test_gpu_device_name():
+    name = torch.cuda.get_device_name(0)
+    assert isinstance(name, str) and len(name) > 0
+
+
+@pytest.mark.gpu
+def test_gpu_compute_capability():
+    major, minor = torch.cuda.get_device_capability(0)
+    assert major >= 5, f"Compute capability {major}.{minor} is too old"
+
+
+@pytest.mark.gpu
+def test_load_small_model_on_gpu():
+    WhisperModel = pytest.importorskip("faster_whisper").WhisperModel
     model = WhisperModel("small", device="cuda", compute_type="float16")
-    print("✓ Small model loaded successfully on GPU!")
-except Exception as e:
-    print(f"✗ Failed: {e}")
+    assert model is not None

@@ -27,6 +27,12 @@ Thumbs.db
 # Logs
 *.log
 
+# Test / coverage artifacts
+htmlcov/
+coverage.xml
+.coverage
+.pytest_cache/
+
 # Personal command files (user-specific, not for sharing)
 .claude/commands/rpi_*.md
 .claude/commands/spec_*.md
