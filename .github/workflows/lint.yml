@@ -1,0 +1,139 @@
+name: Lint
+
+# Run on pull requests and pushes to main
+on:
+  pull_request:
+    branches: [main, master, develop]
+  push:
+    branches: [main, master, develop]
+  workflow_dispatch:  # Allow manual trigger
+
+# Cancel in-progress runs when a new run is triggered
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for better analysis
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'  # Use recent Python version
+          cache: 'pip'  # Cache pip dependencies
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff black mypy pre-commit
+
+      - name: Run Ruff linter
+        run: |
+          echo "::group::Ruff Lint"
+          ruff check . --output-format=github
+          echo "::endgroup::"
+
+      - name: Run Ruff formatter check
+        run: |
+          echo "::group::Ruff Format Check"
+          ruff format --check .
+          echo "::endgroup::"
+
+      - name: Run Black formatter check
+        run: |
+          echo "::group::Black Format Check"
+          black --check --diff .
+          echo "::endgroup::"
+        continue-on-error: true  # Don't fail if using ruff format instead
+
+      - name: Run Mypy type checker
+        run: |
+          echo "::group::Mypy Type Check"
+          mypy . --no-error-summary || true  # Don't fail on type errors initially
+          echo "::endgroup::"
+        continue-on-error: true  # Incremental improvement - don't block PRs yet
+
+      - name: Run pre-commit hooks (on changed files only)
+        run: |
+          echo "::group::Pre-commit Hooks"
+          pre-commit run --show-diff-on-failure --color=always --all-files || true
+          echo "::endgroup::"
+        continue-on-error: true  # Advisory only during initial setup
+
+  # Optional: Separate job for PRs to show inline comments
+  lint-pr-comments:
+    name: PR Review Comments
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff
+
+      - name: Run Ruff with annotations
+        run: |
+          ruff check . --output-format=github || true
+        continue-on-error: true
+
+      - name: Comment PR with summary
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.type === 'Bot' &&
+              comment.body.includes('Code Quality Check')
+            );
+
+            const commentBody = `## Code Quality Check ✅
+
+            The linting workflow has completed. Please review any warnings above.
+
+            **Note:** During initial setup, linting failures are advisory only.
+            As the codebase improves, these will become blocking.
+
+            See the [workflow run](${context.payload.pull_request.html_url}/checks) for details.`;
+
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+            }

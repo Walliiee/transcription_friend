@@ -1,0 +1,181 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "transcriptions"
+version = "0.1.0"
+description = "Audio transcription workspace using GPU-accelerated Whisper models"
+requires-python = ">=3.8"
+dependencies = [
+    "torch>=2.7.1",
+    "faster-whisper>=1.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+    "ruff>=0.1.0",
+    "black>=23.0.0",
+    "mypy>=1.0.0",
+    "pre-commit>=3.0.0",
+]
+
+# ============================================================================
+# RUFF - Modern Python linter and formatter (replaces flake8, isort, etc.)
+# ============================================================================
+[tool.ruff]
+# Target Python 3.8+
+target-version = "py38"
+
+# Line length to match Black
+line-length = 100
+
+# Exclude common directories
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    "build",
+    "dist",
+    "*.egg-info",
+]
+
+[tool.ruff.lint]
+# Enable rule categories
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort (import sorting)
+    "N",      # pep8-naming
+    "UP",     # pyupgrade (modernize Python code)
+    "B",      # flake8-bugbear (find likely bugs)
+    "C4",     # flake8-comprehensions
+    "SIM",    # flake8-simplify
+    "PTH",    # flake8-use-pathlib
+    "RUF",    # Ruff-specific rules
+]
+
+# Ignore specific rules (adjust based on your codebase)
+ignore = [
+    "E501",   # Line too long (Black handles this)
+    "B008",   # Do not perform function call in argument defaults
+    "PTH123", # pathlib over os.path.open (gradual migration)
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Test files can have some relaxed rules
+"tests/**/*.py" = [
+    "S101",   # Allow assert statements in tests
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["transcriptions"]
+
+# ============================================================================
+# BLACK - Code formatter
+# ============================================================================
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311"]
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | __pycache__
+  | \.pytest_cache
+  | \.mypy_cache
+  | build
+  | dist
+)/
+'''
+
+# ============================================================================
+# MYPY - Static type checker
+# ============================================================================
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false  # Start lenient, gradually increase strictness
+check_untyped_defs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+no_implicit_optional = true
+
+# Ignore missing imports for third-party libraries without stubs
+# (Incrementally add type stubs as you improve the codebase)
+[[tool.mypy.overrides]]
+module = [
+    "faster_whisper.*",
+    "ctranslate2.*",
+]
+ignore_missing_imports = true
+
+# ============================================================================
+# PYTEST - Testing framework
+# ============================================================================
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+# Add markers for different test types
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "unit: marks tests as unit tests",
+    "gpu: marks tests that require GPU",
+]
+
+# Increase verbosity
+addopts = [
+    "-ra",                    # Show summary of all test outcomes
+    "--strict-markers",       # Enforce marker registration
+    "--strict-config",        # Enforce strict config
+    "--showlocals",          # Show local variables in tracebacks
+]
+
+# ============================================================================
+# COVERAGE - Test coverage tracking
+# ============================================================================
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/venv/*",
+    "*/.venv/*",
+    "setup.py",
+]
+branch = true
+
+[tool.coverage.report]
+# Fail if coverage drops below this threshold (adjust as needed)
+fail_under = 0  # Start at 0, gradually increase as you add tests
+
+# Show missing lines
+show_missing = true
+
+# Exclude specific lines from coverage
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"

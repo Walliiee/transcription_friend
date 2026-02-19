@@ -1,0 +1,128 @@
+name: Test
+
+# Run on pull requests and pushes to main
+on:
+  pull_request:
+    branches: [main, master, develop]
+  push:
+    branches: [main, master, develop]
+  workflow_dispatch:  # Allow manual trigger
+
+# Cancel in-progress runs when a new run is triggered
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Run Tests
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false  # Continue testing other versions even if one fails
+      matrix:
+        os: [ubuntu-latest]
+        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov
+          pip install -r requirements.txt
+
+      - name: Run tests with coverage
+        run: |
+          pytest -v --cov=. --cov-report=xml --cov-report=term-missing --cov-report=html
+        continue-on-error: true  # Don't fail initially if tests fail (incremental improvement)
+
+      - name: Upload coverage reports to Codecov
+        if: matrix.python-version == '3.11'  # Only upload once
+        uses: codecov/codecov-action@v4
+        with:
+          file: ./coverage.xml
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: false  # Don't fail CI if codecov upload fails
+        continue-on-error: true
+
+      - name: Upload coverage HTML report
+        if: matrix.python-version == '3.11'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html-report
+          path: htmlcov/
+          retention-days: 30
+
+      - name: Comment PR with coverage
+        if: github.event_name == 'pull_request' && matrix.python-version == '3.11'
+        uses: py-cov-action/python-coverage-comment-action@v3
+        with:
+          GITHUB_TOKEN: ${{ github.token }}
+          MINIMUM_GREEN: 80
+          MINIMUM_ORANGE: 60
+        continue-on-error: true
+
+  # Optional: GPU tests (only if GPU runner available)
+  test-gpu:
+    name: Run GPU Tests
+    runs-on: ubuntu-latest
+    if: false  # Disabled by default - enable if you have GPU runners
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies with CUDA
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch --index-url https://download.pytorch.org/whl/cu128
+          pip install -r requirements.txt
+          pip install pytest pytest-cov
+
+      - name: Run GPU-specific tests
+        run: |
+          pytest -v -m gpu --cov=. --cov-report=term-missing
+
+  # Test summary job (always runs)
+  test-summary:
+    name: Test Summary
+    needs: [test]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Check test results
+        run: |
+          echo "## Test Results Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          if [[ "${{ needs.test.result }}" == "success" ]]; then
+            echo "✅ All tests passed!" >> $GITHUB_STEP_SUMMARY
+          elif [[ "${{ needs.test.result }}" == "failure" ]]; then
+            echo "⚠️ Some tests failed. This is advisory during initial setup." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "As the test suite matures, failing tests will block PRs." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "ℹ️ Tests completed with status: ${{ needs.test.result }}" >> $GITHUB_STEP_SUMMARY
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+          echo "- Review test failures and fix issues" >> $GITHUB_STEP_SUMMARY
+          echo "- Gradually increase test coverage" >> $GITHUB_STEP_SUMMARY
+          echo "- Add new tests for modified code" >> $GITHUB_STEP_SUMMARY

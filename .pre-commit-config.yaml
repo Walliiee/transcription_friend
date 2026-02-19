@@ -1,0 +1,99 @@
+# Pre-commit hooks configuration
+# Implements "boy scout rule": Only check/fix files you touch
+#
+# Installation:
+#   pip install pre-commit
+#   pre-commit install
+#
+# Run manually:
+#   pre-commit run --all-files  (run on entire codebase)
+#   pre-commit run              (run on staged files only)
+
+repos:
+  # Ruff - Fast Python linter and formatter (replaces multiple tools)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.0  # Use latest version from https://github.com/astral-sh/ruff-pre-commit/releases
+    hooks:
+      # Linter
+      - id: ruff
+        name: ruff lint
+        args: [--fix]  # Automatically fix issues when possible
+        types_or: [python, pyi]
+
+      # Formatter
+      - id: ruff-format
+        name: ruff format
+        types_or: [python, pyi]
+
+  # Black - Code formatter (alternative to ruff-format if you prefer)
+  # Uncomment if you prefer Black over Ruff's formatter
+  # - repo: https://github.com/psf/black
+  #   rev: 24.8.0
+  #   hooks:
+  #     - id: black
+  #       language_version: python3
+
+  # Mypy - Static type checking
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-all  # Common type stubs
+        args: [--no-strict-optional, --ignore-missing-imports]
+        # Only run on files you're modifying (incremental approach)
+        pass_filenames: true
+
+  # Built-in pre-commit hooks for common issues
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      # File hygiene
+      - id: trailing-whitespace
+        name: trim trailing whitespace
+      - id: end-of-file-fixer
+        name: ensure files end with newline
+      - id: check-yaml
+        name: check yaml syntax
+      - id: check-toml
+        name: check toml syntax
+      - id: check-json
+        name: check json syntax
+
+      # Python-specific
+      - id: check-ast
+        name: check python syntax (AST)
+      - id: check-docstring-first
+        name: ensure docstring comes first
+      - id: debug-statements
+        name: detect debug statements (pdb, ipdb)
+
+      # Security
+      - id: detect-private-key
+        name: detect private keys
+
+      # Merge conflicts
+      - id: check-merge-conflict
+        name: check for merge conflicts
+
+      # Large files (prevent accidental commits)
+      - id: check-added-large-files
+        name: check for large files
+        args: ['--maxkb=10000']  # 10MB limit
+
+  # Optional: Check requirements.txt
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: requirements-txt-fixer
+        name: sort requirements.txt
+
+# Configuration for specific hooks
+default_stages: [commit]  # Run hooks on commit by default
+
+# Exclude certain files/directories (legacy code you don't want to touch yet)
+# Uncomment and adjust as needed:
+# exclude: ^(legacy/|old_scripts/|deprecated/)
+
+# Minimum pre-commit version
+minimum_pre_commit_version: '3.0.0'

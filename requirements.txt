@@ -1,0 +1,22 @@
+# Audio Transcription Workspace - Python Dependencies
+#
+# HARDWARE: RTX 5060 Laptop GPU (compute capability sm_120, CUDA 12.0)
+# IMPORTANT: Must install PyTorch with CUDA 12.8+ to support sm_120
+#
+# Installation steps:
+#   1. pip install torch --index-url https://download.pytorch.org/whl/cu128
+#   2. pip install -r requirements.txt
+
+# Core dependencies
+torch>=2.7.1
+faster-whisper>=1.2.0
+
+# The following are auto-installed by dependencies above but listed for reference:
+# - ctranslate2>=4.0.0    (inference backend for faster-whisper)
+# - numpy>=1.24.0         (numerical operations)
+# - onnxruntime          (model optimization)
+
+# REMOVED (unused in current codebase):
+# - torchvision          (only needed for image processing, not audio)
+# - torchaudio           (not directly used, faster-whisper handles audio)
+# - openai-whisper       (legacy, replaced by faster-whisper for better performance)

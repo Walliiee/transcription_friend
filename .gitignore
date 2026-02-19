@@ -1,0 +1,38 @@
+# Interview data - contains sensitive personal information
+interviews/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+dist/
+build/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Personal command files (user-specific, not for sharing)
+.claude/commands/rpi_*.md
+.claude/commands/spec_*.md
+
+# Local Claude Code settings (contains machine-specific paths)
+.claude/settings.local.json
+
+# Memory files (may contain session-specific context)
+.remember/
