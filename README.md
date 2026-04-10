@@ -38,7 +38,28 @@ A typical workflow processes transcription on the GPU while simultaneously handl
 
 ## Quick Start
 
+### Open this on GitHub Pages
+
+After enabling GitHub Pages (Settings -> Pages -> Build and deployment -> GitHub Actions),
+the project landing page is available at:
+
+- https://walliiee.github.io/transcription_friend/
+
 ### Installation
+
+#### Option A: one-command local install (recommended)
+
+Linux/macOS:
+```bash
+bash -c "$(curl -fsSL https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.sh)"
+```
+
+Windows (PowerShell):
+```powershell
+irm https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.ps1 | iex
+```
+
+#### Option B: manual install
 
 1. **Install PyTorch with CUDA 12.8+ support** (required for RTX 5060):
 ```bash

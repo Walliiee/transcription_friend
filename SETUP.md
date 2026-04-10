@@ -179,7 +179,7 @@ git commit --no-verify -m "message"
 
 ### GitHub Actions
 
-Two workflows are configured:
+Three workflows are configured:
 
 1. **Lint Workflow** (`.github/workflows/lint.yml`)
    - Runs on PRs and pushes to main
@@ -193,6 +193,11 @@ Two workflows are configured:
    - Generates coverage reports
    - Uploads coverage to Codecov (if configured)
    - **Currently advisory** (won't block PRs initially)
+
+3. **Docs Workflow** (`.github/workflows/pages.yml`)
+   - Deploys `docs/` to GitHub Pages on pushes to `main`
+   - Gives you a shareable URL: `https://<owner>.github.io/<repo>/`
+   - Includes installation commands for Bash and PowerShell users
 
 ### Enabling Required Checks
 
