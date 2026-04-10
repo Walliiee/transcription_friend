@@ -3,86 +3,855 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Transcription Friend</title>
+    <title>Transcription Friend — Turn Audio into Text</title>
     <meta
       name="description"
-      content="Drop an audio file and transcribe directly in your browser, or install locally for GPU acceleration."
+      content="Free, private audio-to-text transcription that runs entirely in your browser. No sign-up, no uploads. Just drop a file and get your transcript."
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <style>
+      /* ── Reset & Tokens ───────────────────────────────── */
+      :root {
+        --bg: #0c1222;
+        --surface: #131b30;
+        --surface-2: #1a2544;
+        --surface-3: #1f2e54;
+        --text: #eaf0ff;
+        --text-soft: #9fb0d6;
+        --accent: #6ea8fe;
+        --accent-glow: rgba(110,168,254,.18);
+        --green: #4ade80;
+        --green-glow: rgba(74,222,128,.14);
+        --amber: #fbbf24;
+        --red: #f87171;
+        --border: #283656;
+        --radius: 14px;
+        --radius-sm: 10px;
+        --font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html { scroll-behavior: smooth; }
+      body {
+        font-family: var(--font);
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.55;
+        min-height: 100vh;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ── Layout ────────────────────────────────────────── */
+      .page {
+        max-width: 820px;
+        margin: 0 auto;
+        padding: 2rem 1.25rem 4rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+      }
+
+      /* ── Hero ──────────────────────────────────────────── */
+      .hero {
+        text-align: center;
+        padding: 2.5rem 1.5rem 2rem;
+        background: linear-gradient(170deg, rgba(110,168,254,.08) 0%, transparent 50%);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+      }
+      .hero-icon {
+        width: 56px; height: 56px;
+        margin: 0 auto .75rem;
+        border-radius: 50%;
+        background: var(--accent-glow);
+        display: grid; place-items: center;
+        font-size: 1.7rem;
+      }
+      .hero h1 {
+        font-size: 1.9rem;
+        font-weight: 700;
+        letter-spacing: -.02em;
+      }
+      .hero .subtitle {
+        margin-top: .5rem;
+        color: var(--text-soft);
+        max-width: 520px;
+        margin-inline: auto;
+        font-size: 1.05rem;
+      }
+      .trust-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: .5rem;
+        margin-top: 1.1rem;
+      }
+      .trust-pill {
+        font-size: .82rem;
+        padding: .3rem .75rem;
+        border-radius: 999px;
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        color: var(--text-soft);
+      }
+
+      /* ── Cards / Panels ────────────────────────────────── */
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 1.5rem;
+      }
+      .card h2 {
+        font-size: 1.15rem;
+        font-weight: 600;
+        margin-bottom: .15rem;
+      }
+      .card .desc {
+        color: var(--text-soft);
+        font-size: .93rem;
+        margin-bottom: 1rem;
+      }
+
+      /* ── How-it-works Steps ────────────────────────────── */
+      .flow {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+        gap: .65rem;
+      }
+      .flow-step {
+        padding: .85rem;
+        border-radius: var(--radius-sm);
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        text-align: center;
+        transition: border-color .2s, background .2s;
+      }
+      .flow-step.active {
+        border-color: var(--accent);
+        background: var(--accent-glow);
+      }
+      .flow-step.done {
+        border-color: var(--green);
+        background: var(--green-glow);
+      }
+      .flow-step .num {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 28px; height: 28px;
+        border-radius: 50%;
+        font-size: .82rem;
+        font-weight: 700;
+        background: var(--surface-3);
+        border: 1px solid var(--border);
+        margin-bottom: .4rem;
+      }
+      .flow-step.active .num { background: var(--accent); color: #0c1222; border-color: var(--accent); }
+      .flow-step.done .num   { background: var(--green); color: #0c1222; border-color: var(--green); }
+      .flow-step .label { display: block; font-weight: 600; font-size: .92rem; }
+      .flow-step .help  { display: block; font-size: .8rem; color: var(--text-soft); margin-top: .15rem; }
+
+      /* ── Drop Zone ─────────────────────────────────────── */
+      .dropzone-wrap { position: relative; }
+      #dropzone {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: .4rem;
+        min-height: 170px;
+        border: 2px dashed #3d5289;
+        border-radius: var(--radius);
+        background: rgba(110,168,254,.05);
+        cursor: pointer;
+        transition: border-color .15s, background .15s, transform .15s;
+        text-align: center;
+        padding: 1.5rem 1rem;
+      }
+      #dropzone:hover {
+        border-color: var(--accent);
+        background: var(--accent-glow);
+      }
+      #dropzone.dragover {
+        border-color: var(--green);
+        background: var(--green-glow);
+        transform: scale(1.01);
+      }
+      #dropzone.has-file {
+        border-style: solid;
+        border-color: var(--green);
+        background: var(--green-glow);
+      }
+      .drop-icon { font-size: 2.2rem; line-height: 1; }
+      .drop-main { font-size: 1rem; font-weight: 600; }
+      .drop-hint { font-size: .85rem; color: var(--text-soft); }
+      .drop-file-info {
+        font-size: .9rem;
+        color: var(--green);
+        font-weight: 600;
+        margin-top: .1rem;
+      }
+      #fileInput { display: none; }
+
+      /* ── Controls Row ──────────────────────────────────── */
+      .controls-row {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+        gap: .75rem;
+        margin-top: 1rem;
+      }
+      .field { display: flex; flex-direction: column; gap: .3rem; flex: 1; min-width: 160px; }
+      .field-label { font-size: .85rem; color: var(--text-soft); font-weight: 500; }
+      select {
+        appearance: none;
+        -webkit-appearance: none;
+        padding: .6rem .8rem;
+        padding-right: 2rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--surface-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%239fb0d6' stroke-width='1.5' fill='none'/%3E%3C/svg%3E") no-repeat right .7rem center;
+        color: var(--text);
+        font: inherit;
+        font-size: .92rem;
+        cursor: pointer;
+      }
+      select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+      /* ── Buttons ────────────────────────────────────────── */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .65rem 1.1rem;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        font: inherit;
+        font-size: .92rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background .15s, border-color .15s, opacity .15s;
+        white-space: nowrap;
+      }
+      .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .btn-primary {
+        background: linear-gradient(180deg, #3b6cf5, #2b55cc);
+        border-color: #4070f0;
+        color: #fff;
+      }
+      .btn-primary:hover:not(:disabled) { background: linear-gradient(180deg, #4b7cff, #3565dd); }
+      .btn-secondary {
+        background: var(--surface-2);
+        color: var(--text);
+      }
+      .btn-secondary:hover:not(:disabled) { background: var(--surface-3); }
+      .btn:disabled { opacity: .45; cursor: not-allowed; }
+      .btn .icon { font-size: 1.05rem; }
+
+      /* ── Spinner ────────────────────────────────────────── */
+      .spinner {
+        display: none;
+        width: 16px; height: 16px;
+        border: 2px solid rgba(255,255,255,.25);
+        border-top-color: #fff;
+        border-radius: 50%;
+        animation: spin .6s linear infinite;
+      }
+      .btn.loading .spinner { display: inline-block; }
+      .btn.loading .icon { display: none; }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* ── Status Bar ─────────────────────────────────────── */
+      .status-bar {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: .55rem;
+        margin-top: 1rem;
+      }
+      .status-item {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: .6rem .75rem;
+      }
+      .status-item .val { font-weight: 700; font-size: .95rem; display: block; }
+      .status-item .lbl { font-size: .78rem; color: var(--text-soft); display: block; margin-top: .1rem; }
+
+      /* ── Progress Bar ──────────────────────────────────── */
+      .progress-wrap {
+        margin-top: .75rem;
+        display: none;
+      }
+      .progress-wrap.visible { display: block; }
+      .progress-track {
+        height: 6px;
+        border-radius: 3px;
+        background: var(--surface-3);
+        overflow: hidden;
+      }
+      .progress-fill {
+        height: 100%;
+        border-radius: 3px;
+        background: linear-gradient(90deg, var(--accent), var(--green));
+        width: 0%;
+        transition: width .3s ease;
+      }
+      .progress-fill.indeterminate {
+        width: 40%;
+        animation: indeterminate 1.4s ease-in-out infinite;
+      }
+      @keyframes indeterminate {
+        0%   { transform: translateX(-100%); }
+        100% { transform: translateX(350%); }
+      }
+      .progress-label {
+        font-size: .82rem;
+        color: var(--text-soft);
+        margin-top: .35rem;
+      }
+
+      /* ── Warning ────────────────────────────────────────── */
+      .warning {
+        margin-top: .65rem;
+        padding: .55rem .75rem;
+        border-radius: var(--radius-sm);
+        font-size: .88rem;
+        display: none;
+      }
+      .warning.visible { display: flex; align-items: start; gap: .45rem; }
+      .warning.warn  { background: rgba(251,191,36,.1); border: 1px solid rgba(251,191,36,.3); color: var(--amber); }
+      .warning.error { background: rgba(248,113,113,.1); border: 1px solid rgba(248,113,113,.3); color: var(--red); }
+
+      /* ── Transcript Output ─────────────────────────────── */
+      .output-wrap {
+        position: relative;
+      }
+      #output {
+        width: 100%;
+        min-height: 200px;
+        resize: vertical;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: #0d1526;
+        color: var(--text);
+        padding: .85rem;
+        font: .92rem/1.55 var(--mono);
+      }
+      #output:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+      #output.placeholder { color: var(--text-soft); font-style: italic; }
+      .output-actions {
+        display: flex;
+        gap: .5rem;
+        margin-top: .65rem;
+        flex-wrap: wrap;
+      }
+      .copy-toast {
+        position: fixed;
+        bottom: 1.5rem;
+        left: 50%;
+        transform: translateX(-50%) translateY(80px);
+        background: var(--green);
+        color: #0c1222;
+        font-weight: 600;
+        font-size: .88rem;
+        padding: .5rem 1rem;
+        border-radius: var(--radius-sm);
+        opacity: 0;
+        transition: transform .25s ease, opacity .25s ease;
+        pointer-events: none;
+        z-index: 100;
+      }
+      .copy-toast.show {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+
+      /* ── Collapsible Install ───────────────────────────── */
+      .collapse-toggle {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        width: 100%;
+        background: none;
+        border: none;
+        color: var(--text);
+        font: inherit;
+        font-size: 1.15rem;
+        font-weight: 600;
+        cursor: pointer;
+        padding: 0;
+        text-align: left;
+      }
+      .collapse-toggle .chevron {
+        transition: transform .2s;
+        font-size: .85rem;
+      }
+      .collapse-toggle[aria-expanded="true"] .chevron { transform: rotate(90deg); }
+      .collapse-body {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows .25s ease;
+      }
+      .collapse-body.open { grid-template-rows: 1fr; }
+      .collapse-inner { overflow: hidden; }
+      .install-desc {
+        color: var(--text-soft);
+        font-size: .93rem;
+        margin: .65rem 0 .85rem;
+      }
+      .install-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: .65rem;
+      }
+      .install-option {
+        background: var(--surface-2);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        padding: .85rem;
+      }
+      .install-option strong { display: block; margin-bottom: .45rem; font-size: .92rem; }
+      .install-option pre {
+        margin: 0;
+        padding: .5rem .65rem;
+        border-radius: 8px;
+        background: #0d1526;
+        border: 1px solid var(--border);
+        overflow-x: auto;
+        font-size: .82rem;
+        line-height: 1.5;
+        user-select: all;
+      }
+      .install-option .copy-cmd {
+        margin-top: .45rem;
+        font-size: .8rem;
+        color: var(--text-soft);
+        cursor: pointer;
+        background: none;
+        border: none;
+        padding: 0;
+        text-decoration: underline;
+        font-family: var(--font);
+      }
+      .install-option .copy-cmd:hover { color: var(--text); }
+
+      /* ── GitHub link ────────────────────────────────────── */
+      .footer {
+        text-align: center;
+        padding: 1rem;
+        font-size: .88rem;
+        color: var(--text-soft);
+      }
+      .footer a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+      .footer a:hover { text-decoration: underline; }
+
+      /* ── Responsive ─────────────────────────────────────── */
+      @media (max-width: 600px) {
+        .page { padding: 1.25rem .85rem 3rem; }
+        .hero { padding: 1.5rem 1rem; }
+        .hero h1 { font-size: 1.5rem; }
+        .flow { grid-template-columns: 1fr 1fr; }
+        .install-grid { grid-template-columns: 1fr; }
+        .controls-row { flex-direction: column; }
+        .field { min-width: unset; width: 100%; }
+      }
+    </style>
   </head>
   <body>
     <div class="page">
+
+      <!-- ── Hero ─────────────────────────────────── -->
       <header class="hero">
-        <div>
-          <h1>Transcription Friend</h1>
-          <p>
-            Browser-first audio transcription with a dedicated file drop. For heavier jobs, install
-            locally and use GPU acceleration.
-          </p>
+        <div class="hero-icon" aria-hidden="true">&#127908;</div>
+        <h1>Transcription Friend</h1>
+        <p class="subtitle">
+          Turn any audio recording into text, right here in your browser.
+          No account needed. Your files never leave your device.
+        </p>
+        <div class="trust-row">
+          <span class="trust-pill">100% Private</span>
+          <span class="trust-pill">No sign-up</span>
+          <span class="trust-pill">Works offline after first load</span>
+          <span class="trust-pill">m4a, mp3, wav</span>
         </div>
-        <a class="repo-link" href="https://github.com/Walliiee/transcription_friend">GitHub Repo</a>
       </header>
 
-      <section class="panel drop-panel">
-        <h2>Drop your audio file here</h2>
-        <p class="muted">
-          Supports <strong>.m4a</strong>, <strong>.mp3</strong>, and <strong>.wav</strong>. Runs in your
-          browser using Whisper Web (no upload to this site).
-        </p>
-        <label id="dropzone" class="dropzone" for="fileInput">
-          <input id="fileInput" type="file" accept=".m4a,.mp3,.wav,audio/*" />
-          <p id="dropText"><strong>Browse files</strong> or drag and drop</p>
-        </label>
+      <!-- ── How it works ─────────────────────────── -->
+      <section class="card">
+        <h2>How it works</h2>
+        <p class="desc">Four quick steps — everything happens on your device.</p>
+        <div class="flow">
+          <div class="flow-step active" id="step1">
+            <span class="num">1</span>
+            <span class="label">Choose file</span>
+            <span class="help">Drop or browse an audio file</span>
+          </div>
+          <div class="flow-step" id="step2">
+            <span class="num">2</span>
+            <span class="label">Pick quality</span>
+            <span class="help">Fast, balanced, or best</span>
+          </div>
+          <div class="flow-step" id="step3">
+            <span class="num">3</span>
+            <span class="label">Transcribe</span>
+            <span class="help">AI converts speech to text</span>
+          </div>
+          <div class="flow-step" id="step4">
+            <span class="num">4</span>
+            <span class="label">Get your text</span>
+            <span class="help">Copy or download instantly</span>
+          </div>
+        </div>
+      </section>
 
-        <div class="controls">
-          <label>
-            Model
-            <select id="modelSelect">
-              <option value="Xenova/whisper-tiny">whisper-tiny (fastest)</option>
-              <option value="Xenova/whisper-base">whisper-base</option>
-              <option value="Xenova/whisper-small">whisper-small</option>
-            </select>
+      <!-- ── Main transcription area ──────────────── -->
+      <section class="card" id="transcribeCard">
+        <h2>Start transcribing</h2>
+        <p class="desc">Drop your audio file below and hit the button — that's it.</p>
+
+        <!-- Drop zone -->
+        <div class="dropzone-wrap">
+          <label id="dropzone" for="fileInput">
+            <input id="fileInput" type="file" accept=".m4a,.mp3,.wav,audio/*" />
+            <span class="drop-icon" id="dropIcon" aria-hidden="true">&#128194;</span>
+            <span class="drop-main" id="dropMain">Click to browse or drag a file here</span>
+            <span class="drop-hint" id="dropHint">Supports .m4a, .mp3, and .wav files</span>
+            <span class="drop-file-info" id="dropFileInfo"></span>
           </label>
-          <button id="transcribeBtn" disabled>Transcribe</button>
-          <button id="downloadBtn" disabled>Download transcript</button>
         </div>
 
-        <div class="stats">
-          <div class="stat"><span id="filesCount">0</span><small>Files loaded</small></div>
-          <div class="stat"><span id="statusText">Idle</span><small>Status</small></div>
-          <div class="stat"><span id="durationText">-</span><small>Duration</small></div>
+        <!-- Controls -->
+        <div class="controls-row">
+          <div class="field">
+            <span class="field-label">Transcription quality</span>
+            <select id="modelSelect" aria-label="Choose transcription quality">
+              <option value="Xenova/whisper-tiny">Fast — good for clear speech</option>
+              <option value="Xenova/whisper-base" selected>Balanced — recommended</option>
+              <option value="Xenova/whisper-small">Best — slower but more accurate</option>
+            </select>
+          </div>
+          <button class="btn btn-primary" id="transcribeBtn" disabled>
+            <span class="spinner"></span>
+            <span class="icon">&#9654;</span>
+            <span id="transcribeBtnText">Transcribe</span>
+          </button>
+        </div>
+
+        <!-- Status indicators -->
+        <div class="status-bar">
+          <div class="status-item">
+            <span class="val" id="fileNameDisplay">No file yet</span>
+            <span class="lbl">Selected file</span>
+          </div>
+          <div class="status-item">
+            <span class="val" id="durationDisplay">—</span>
+            <span class="lbl">Audio length</span>
+          </div>
+          <div class="status-item">
+            <span class="val" id="statusDisplay">Ready</span>
+            <span class="lbl">Status</span>
+          </div>
+        </div>
+
+        <!-- Progress bar -->
+        <div class="progress-wrap" id="progressWrap">
+          <div class="progress-track">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
+          <div class="progress-label" id="progressLabel"></div>
+        </div>
+
+        <!-- Warnings -->
+        <div class="warning" id="warningBox">
+          <span id="warningIcon">&#9888;&#65039;</span>
+          <span id="warningMsg"></span>
         </div>
       </section>
 
-      <section class="panel">
-        <h2>Transcript output</h2>
-        <pre id="output">No transcript yet.</pre>
+      <!-- ── Transcript output ────────────────────── -->
+      <section class="card" id="outputCard">
+        <h2>Your transcript</h2>
+        <p class="desc">Edit the text below or download it as a file.</p>
+        <div class="output-wrap">
+          <textarea id="output" class="placeholder" spellcheck="false" aria-label="Transcript text">Your transcript will appear here after processing.</textarea>
+        </div>
+        <div class="output-actions">
+          <button class="btn btn-secondary" id="copyBtn" disabled>
+            <span class="icon">&#128203;</span> Copy to clipboard
+          </button>
+          <button class="btn btn-secondary" id="downloadBtn" disabled>
+            <span class="icon">&#128190;</span> Download as .txt
+          </button>
+        </div>
       </section>
 
-      <section class="panel install-panel">
-        <h2>Download + install locally</h2>
-        <p class="muted">
-          Local mode is best for longer files and GPU speed. Choose either direct repo download or
-          one-command setup.
-        </p>
-        <div class="install-grid">
-          <div>
-            <h3>Download repository</h3>
-            <a class="button-link" href="https://github.com/Walliiee/transcription_friend/archive/refs/heads/main.zip">
-              Download ZIP
-            </a>
-          </div>
-          <div>
-            <h3>Linux / macOS</h3>
-            <pre><code>bash -c "$(curl -fsSL https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.sh)"</code></pre>
-          </div>
-          <div>
-            <h3>Windows PowerShell</h3>
-            <pre><code>irm https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.ps1 | iex</code></pre>
+      <!-- ── Local install (collapsed) ────────────── -->
+      <section class="card">
+        <button class="collapse-toggle" id="installToggle" aria-expanded="false" aria-controls="installBody">
+          <span class="chevron">&#9654;</span>
+          Need to process long recordings? Install locally for GPU speed
+        </button>
+        <div class="collapse-body" id="installBody">
+          <div class="collapse-inner">
+            <p class="install-desc">
+              Local mode runs on your own machine with GPU acceleration — much faster
+              for recordings over 20 minutes. One command to set up.
+            </p>
+            <div class="install-grid">
+              <div class="install-option">
+                <strong>Linux / macOS</strong>
+                <pre><code id="installSh">bash -c "$(curl -fsSL https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.sh)"</code></pre>
+                <button class="copy-cmd" data-target="installSh">Copy command</button>
+              </div>
+              <div class="install-option">
+                <strong>Windows (PowerShell)</strong>
+                <pre><code id="installPs">irm https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.ps1 | iex</code></pre>
+                <button class="copy-cmd" data-target="installPs">Copy command</button>
+              </div>
+            </div>
           </div>
         </div>
       </section>
+
+      <!-- ── Footer ───────────────────────────────── -->
+      <footer class="footer">
+        <a href="https://github.com/Walliiee/transcription_friend">View on GitHub</a>
+      </footer>
     </div>
-    <script type="module" src="./web.js"></script>
+
+    <!-- Toast for clipboard copy -->
+    <div class="copy-toast" id="copyToast">Copied!</div>
+
+    <script type="module">
+      import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2";
+      env.allowLocalModels = false;
+
+      /* ── DOM refs ──────────────────────────────── */
+      const $ = (id) => document.getElementById(id);
+      const fileInput       = $("fileInput");
+      const dropzone        = $("dropzone");
+      const dropIcon        = $("dropIcon");
+      const dropMain        = $("dropMain");
+      const dropHint        = $("dropHint");
+      const dropFileInfo    = $("dropFileInfo");
+      const modelSelect     = $("modelSelect");
+      const transcribeBtn   = $("transcribeBtn");
+      const transcribeTxt   = $("transcribeBtnText");
+      const fileNameDisplay = $("fileNameDisplay");
+      const durationDisplay = $("durationDisplay");
+      const statusDisplay   = $("statusDisplay");
+      const progressWrap    = $("progressWrap");
+      const progressFill    = $("progressFill");
+      const progressLabel   = $("progressLabel");
+      const warningBox      = $("warningBox");
+      const warningMsg      = $("warningMsg");
+      const output          = $("output");
+      const copyBtn         = $("copyBtn");
+      const downloadBtn     = $("downloadBtn");
+      const copyToast       = $("copyToast");
+      const installToggle   = $("installToggle");
+      const installBody     = $("installBody");
+
+      const steps = [1,2,3,4].map(n => $("step" + n));
+
+      /* ── State ─────────────────────────────────── */
+      let selectedFile = null;
+      let transcript   = "";
+      let asr          = null;
+      let activeModel  = "";
+
+      /* ── Helpers ───────────────────────────────── */
+      function setStep(current) {
+        steps.forEach((el, i) => {
+          el.classList.remove("active", "done");
+          if (i < current - 1) el.classList.add("done");
+          else if (i === current - 1) el.classList.add("active");
+        });
+      }
+
+      function setStatus(msg) { statusDisplay.textContent = msg; }
+
+      function showWarning(msg, type = "warn") {
+        warningBox.className = "warning visible " + type;
+        warningMsg.textContent = msg;
+      }
+      function hideWarning() { warningBox.className = "warning"; }
+
+      function showProgress(label, indeterminate = true) {
+        progressWrap.classList.add("visible");
+        progressLabel.textContent = label;
+        progressFill.style.width = indeterminate ? "" : "0%";
+        progressFill.classList.toggle("indeterminate", indeterminate);
+      }
+      function hideProgress() {
+        progressWrap.classList.remove("visible");
+        progressFill.classList.remove("indeterminate");
+      }
+
+      function formatDuration(sec) {
+        if (!Number.isFinite(sec)) return "—";
+        const m = Math.floor(sec / 60);
+        const s = Math.round(sec % 60);
+        if (m === 0) return `${s}s`;
+        return `${m}m ${s}s`;
+      }
+
+      function flashToast(msg = "Copied!") {
+        copyToast.textContent = msg;
+        copyToast.classList.add("show");
+        setTimeout(() => copyToast.classList.remove("show"), 1800);
+      }
+
+      async function getDuration(file) {
+        return new Promise((resolve) => {
+          const a = document.createElement("audio");
+          a.preload = "metadata";
+          a.onloadedmetadata = () => { URL.revokeObjectURL(a.src); resolve(a.duration); };
+          a.onerror = () => resolve(NaN);
+          a.src = URL.createObjectURL(file);
+        });
+      }
+
+      /* ── File selection ────────────────────────── */
+      async function onFileSelected(file) {
+        selectedFile = file;
+        transcript = "";
+        output.value = "Your transcript will appear here after processing.";
+        output.classList.add("placeholder");
+        downloadBtn.disabled = true;
+        copyBtn.disabled = true;
+        hideWarning();
+
+        dropzone.classList.add("has-file");
+        dropIcon.innerHTML = "&#9989;";
+        dropMain.textContent = file.name;
+        dropHint.textContent = "Click or drop to change file";
+        fileNameDisplay.textContent = file.name;
+        transcribeBtn.disabled = false;
+
+        setStep(2);
+        setStatus("File ready");
+
+        const dur = await getDuration(file);
+        durationDisplay.textContent = formatDuration(dur);
+        const sizeKB = (file.size / 1024).toFixed(0);
+        dropFileInfo.textContent = `${formatDuration(dur)} — ${sizeKB > 1024 ? (file.size / 1048576).toFixed(1) + " MB" : sizeKB + " KB"}`;
+
+        if (dur > 1200) {
+          showWarning("This file is over 20 minutes. Browser mode will be slow — consider using local GPU mode below.", "warn");
+        }
+      }
+
+      fileInput.addEventListener("change", (e) => {
+        if (e.target.files?.[0]) onFileSelected(e.target.files[0]);
+      });
+
+      ["dragenter", "dragover"].forEach((evt) =>
+        dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add("dragover"); })
+      );
+      ["dragleave", "drop"].forEach((evt) =>
+        dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove("dragover"); })
+      );
+      dropzone.addEventListener("drop", (e) => {
+        if (e.dataTransfer?.files?.[0]) onFileSelected(e.dataTransfer.files[0]);
+      });
+
+      /* ── Model pipeline ────────────────────────── */
+      async function getRunner(modelId) {
+        if (asr && activeModel === modelId) return asr;
+        showProgress("Downloading AI model (first time may take a moment)...");
+        setStatus("Loading model...");
+        asr = await pipeline("automatic-speech-recognition", modelId);
+        activeModel = modelId;
+        return asr;
+      }
+
+      /* ── Transcription ─────────────────────────── */
+      transcribeBtn.addEventListener("click", async () => {
+        if (!selectedFile) return;
+        transcribeBtn.disabled = true;
+        transcribeBtn.classList.add("loading");
+        transcribeTxt.textContent = "Working...";
+        hideWarning();
+        setStep(3);
+
+        try {
+          const runner = await getRunner(modelSelect.value);
+          showProgress("Transcribing your audio...");
+          setStatus("Transcribing...");
+          output.value = "";
+          output.classList.remove("placeholder");
+
+          const result = await runner(selectedFile, {
+            chunk_length_s: 30,
+            stride_length_s: 5,
+          });
+
+          transcript = (result?.text || "").trim();
+          output.value = transcript || "No speech detected in this file.";
+          setStatus("Done!");
+          setStep(4);
+          downloadBtn.disabled = !transcript;
+          copyBtn.disabled = !transcript;
+          hideProgress();
+        } catch (err) {
+          console.error(err);
+          setStatus("Failed");
+          showWarning("Transcription failed. Try the 'Fast' quality setting or local GPU mode.", "error");
+          output.value = "";
+          output.classList.add("placeholder");
+          output.value = "Something went wrong. See browser console (F12) for details.";
+          hideProgress();
+        } finally {
+          transcribeBtn.classList.remove("loading");
+          transcribeBtn.disabled = false;
+          transcribeTxt.textContent = "Transcribe";
+        }
+      });
+
+      /* ── Copy + Download ───────────────────────── */
+      copyBtn.addEventListener("click", async () => {
+        const text = output.value;
+        if (!text) return;
+        try {
+          await navigator.clipboard.writeText(text);
+          flashToast("Copied to clipboard!");
+        } catch {
+          output.select();
+          document.execCommand("copy");
+          flashToast("Copied!");
+        }
+      });
+
+      downloadBtn.addEventListener("click", () => {
+        const text = output.value;
+        if (!text) return;
+        const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+        const a = document.createElement("a");
+        const base = selectedFile?.name?.replace(/\.[^.]+$/, "") || "transcript";
+        a.href = URL.createObjectURL(blob);
+        a.download = `${base}_transcript.txt`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+
+      /* ── Install section toggle ────────────────── */
+      installToggle.addEventListener("click", () => {
+        const open = installBody.classList.toggle("open");
+        installToggle.setAttribute("aria-expanded", open);
+      });
+
+      document.querySelectorAll(".copy-cmd").forEach((btn) => {
+        btn.addEventListener("click", () => {
+          const code = $(btn.dataset.target);
+          if (code) {
+            navigator.clipboard.writeText(code.textContent).then(() => flashToast("Command copied!"));
+          }
+        });
+      });
+    </script>
   </body>
 </html>
