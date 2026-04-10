@@ -3,46 +3,86 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Audio Transcription Workspace</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        max-width: 800px;
-        margin: 2rem auto;
-        line-height: 1.5;
-        padding: 0 1rem;
-      }
-      code {
-        background: #f4f4f4;
-        padding: 0.15rem 0.35rem;
-        border-radius: 4px;
-      }
-      a {
-        color: #0b57d0;
-      }
-    </style>
+    <title>Transcription Friend</title>
+    <meta
+      name="description"
+      content="Drop an audio file and transcribe directly in your browser, or install locally for GPU acceleration."
+    />
+    <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
-    <h1>Audio Transcription Workspace</h1>
-    <p>
-      Welcome. This project provides GPU-accelerated audio transcription using
-      faster-whisper.
-    </p>
+    <div class="page">
+      <header class="hero">
+        <div>
+          <h1>Transcription Friend</h1>
+          <p>
+            Browser-first audio transcription with a dedicated file drop. For heavier jobs, install
+            locally and use GPU acceleration.
+          </p>
+        </div>
+        <a class="repo-link" href="https://github.com/Walliiee/transcription_friend">GitHub Repo</a>
+      </header>
 
-    <h2>Quick install</h2>
-    <p><strong>Linux/macOS (bash):</strong></p>
-    <pre><code>bash -c "$(curl -fsSL https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.sh)"</code></pre>
+      <section class="panel drop-panel">
+        <h2>Drop your audio file here</h2>
+        <p class="muted">
+          Supports <strong>.m4a</strong>, <strong>.mp3</strong>, and <strong>.wav</strong>. Runs in your
+          browser using Whisper Web (no upload to this site).
+        </p>
+        <label id="dropzone" class="dropzone" for="fileInput">
+          <input id="fileInput" type="file" accept=".m4a,.mp3,.wav,audio/*" />
+          <p id="dropText"><strong>Browse files</strong> or drag and drop</p>
+        </label>
 
-    <p><strong>Windows (PowerShell):</strong></p>
-    <pre><code>irm https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.ps1 | iex</code></pre>
+        <div class="controls">
+          <label>
+            Model
+            <select id="modelSelect">
+              <option value="Xenova/whisper-tiny">whisper-tiny (fastest)</option>
+              <option value="Xenova/whisper-base">whisper-base</option>
+              <option value="Xenova/whisper-small">whisper-small</option>
+            </select>
+          </label>
+          <button id="transcribeBtn" disabled>Transcribe</button>
+          <button id="downloadBtn" disabled>Download transcript</button>
+        </div>
 
-    <h2>Run</h2>
-    <pre><code>python scripts/transcribe.py --audio "interview.m4a" --name Person --language da</code></pre>
+        <div class="stats">
+          <div class="stat"><span id="filesCount">0</span><small>Files loaded</small></div>
+          <div class="stat"><span id="statusText">Idle</span><small>Status</small></div>
+          <div class="stat"><span id="durationText">-</span><small>Duration</small></div>
+        </div>
+      </section>
 
-    <h2>Repository</h2>
-    <p>
-      Source code and full docs live in the GitHub repository:
-      <a href="https://github.com/Walliiee/transcription_friend">https://github.com/Walliiee/transcription_friend</a>
-    </p>
+      <section class="panel">
+        <h2>Transcript output</h2>
+        <pre id="output">No transcript yet.</pre>
+      </section>
+
+      <section class="panel install-panel">
+        <h2>Download + install locally</h2>
+        <p class="muted">
+          Local mode is best for longer files and GPU speed. Choose either direct repo download or
+          one-command setup.
+        </p>
+        <div class="install-grid">
+          <div>
+            <h3>Download repository</h3>
+            <a class="button-link" href="https://github.com/Walliiee/transcription_friend/archive/refs/heads/main.zip">
+              Download ZIP
+            </a>
+          </div>
+          <div>
+            <h3>Linux / macOS</h3>
+            <pre><code>bash -c "$(curl -fsSL https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.sh)"</code></pre>
+          </div>
+          <div>
+            <h3>Windows PowerShell</h3>
+            <pre><code>irm https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.ps1 | iex</code></pre>
+          </div>
+        </div>
+      </section>
+    </div>
+    <script type="module" src="./web.js"></script>
   </body>
 </html>
