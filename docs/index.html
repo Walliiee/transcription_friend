@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Audio Transcription Workspace</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 800px;
+        margin: 2rem auto;
+        line-height: 1.5;
+        padding: 0 1rem;
+      }
+      code {
+        background: #f4f4f4;
+        padding: 0.15rem 0.35rem;
+        border-radius: 4px;
+      }
+      a {
+        color: #0b57d0;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Audio Transcription Workspace</h1>
+    <p>
+      Welcome. This project provides GPU-accelerated audio transcription using
+      faster-whisper.
+    </p>
+
+    <h2>Quick install</h2>
+    <p><strong>Linux/macOS (bash):</strong></p>
+    <pre><code>bash -c "$(curl -fsSL https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.sh)"</code></pre>
+
+    <p><strong>Windows (PowerShell):</strong></p>
+    <pre><code>irm https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.ps1 | iex</code></pre>
+
+    <h2>Run</h2>
+    <pre><code>python scripts/transcribe.py --audio "interview.m4a" --name Person --language da</code></pre>
+
+    <h2>Repository</h2>
+    <p>
+      Source code and full docs live in the GitHub repository:
+      <a href="https://github.com/Walliiee/transcription_friend">https://github.com/Walliiee/transcription_friend</a>
+    </p>
+  </body>
+</html>

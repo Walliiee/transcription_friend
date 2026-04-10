@@ -1,16 +1,14 @@
-"""
-Shared utilities for audio transcription workspace
-"""
+"""Shared utilities for audio transcription workspace."""
 
-from .whisper_helpers import format_timestamp, load_model, transcribe_file
-from .corrections import CORRECTIONS_EN, CORRECTIONS_DA, REVIEW_FLAGS_EN, REVIEW_FLAGS_DA
+from .corrections import CORRECTIONS_DA, CORRECTIONS_EN, REVIEW_FLAGS_DA, REVIEW_FLAGS_EN
 
-__all__ = [
-    'format_timestamp',
-    'load_model',
-    'transcribe_file',
-    'CORRECTIONS_EN',
-    'CORRECTIONS_DA',
-    'REVIEW_FLAGS_EN',
-    'REVIEW_FLAGS_DA',
-]
+__all__ = ["CORRECTIONS_DA", "CORRECTIONS_EN", "REVIEW_FLAGS_DA", "REVIEW_FLAGS_EN"]
+
+try:
+    # Optional dependency path: importing whisper helpers requires faster-whisper.
+    from .whisper_helpers import format_timestamp, load_model, transcribe_file
+
+    __all__ += ["format_timestamp", "load_model", "transcribe_file"]
+except ModuleNotFoundError:
+    # Keep corrections utilities importable in environments without transcription deps.
+    pass
