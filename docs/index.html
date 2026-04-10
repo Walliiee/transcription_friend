@@ -759,6 +759,48 @@
         if (e.dataTransfer?.files?.[0]) onFileSelected(e.dataTransfer.files[0]);
       });
 
+      /* ── Audio decoding ───────────────────────── */
+      const TARGET_SR = 16000;
+
+      async function decodeAudio(file) {
+        showProgress("Reading audio file...");
+        setStatus("Decoding audio...");
+        const arrayBuf = await file.arrayBuffer();
+        const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: TARGET_SR });
+        let decoded;
+        try {
+          decoded = await ctx.decodeAudioData(arrayBuf);
+        } catch (e) {
+          ctx.close();
+          throw new Error(
+            `Your browser couldn't decode this ${file.name.split(".").pop()} file. ` +
+            "Try converting it to .wav or .mp3 first, or use a different browser (Chrome works best)."
+          );
+        }
+        let samples;
+        if (decoded.numberOfChannels === 1) {
+          samples = decoded.getChannelData(0);
+        } else {
+          const left  = decoded.getChannelData(0);
+          const right = decoded.getChannelData(1);
+          samples = new Float32Array(left.length);
+          for (let i = 0; i < left.length; i++) {
+            samples[i] = (left[i] + right[i]) / 2;
+          }
+        }
+        if (decoded.sampleRate !== TARGET_SR) {
+          const ratio  = decoded.sampleRate / TARGET_SR;
+          const newLen = Math.round(samples.length / ratio);
+          const resampled = new Float32Array(newLen);
+          for (let i = 0; i < newLen; i++) {
+            resampled[i] = samples[Math.round(i * ratio)];
+          }
+          samples = resampled;
+        }
+        ctx.close();
+        return samples;
+      }
+
       /* ── Model pipeline ────────────────────────── */
       async function getRunner(modelId) {
         if (asr && activeModel === modelId) return asr;
@@ -779,15 +821,17 @@
         setStep(3);
 
         try {
+          const audioData = await decodeAudio(selectedFile);
           const runner = await getRunner(modelSelect.value);
           showProgress("Transcribing your audio...");
           setStatus("Transcribing...");
           output.value = "";
           output.classList.remove("placeholder");
 
-          const result = await runner(selectedFile, {
+          const result = await runner(audioData, {
             chunk_length_s: 30,
             stride_length_s: 5,
+            sampling_rate: TARGET_SR,
           });
 
           transcript = (result?.text || "").trim();
@@ -800,10 +844,13 @@
         } catch (err) {
           console.error(err);
           setStatus("Failed");
-          showWarning("Transcription failed. Try the 'Fast' quality setting or local GPU mode.", "error");
+          const msg = err.message?.includes("browser couldn't decode")
+            ? err.message
+            : "Transcription failed. Try the 'Fast' quality setting, a different file format, or local GPU mode.";
+          showWarning(msg, "error");
           output.value = "";
           output.classList.add("placeholder");
-          output.value = "Something went wrong. See browser console (F12) for details.";
+          output.value = "Something went wrong. See the error message above for suggestions.";
           hideProgress();
         } finally {
           transcribeBtn.classList.remove("loading");
