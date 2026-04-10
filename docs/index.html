@@ -6,32 +6,187 @@
     <title>Transcription Friend</title>
     <meta
       name="description"
-      content="Drop an audio file and transcribe directly in your browser, or install locally for GPU acceleration."
+      content="Clear, browser-first Whisper transcription with a guided upload-to-transcript flow."
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #0b1020;
+        --panel: #121a2f;
+        --panel-2: #1a2747;
+        --text: #ecf1ff;
+        --muted: #b4c0df;
+        --accent: #77a3ff;
+        --accent-2: #53d7b2;
+        --danger: #ff8d8d;
+        --border: #2f3b60;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        background: radial-gradient(1200px 700px at 10% -10%, #273b76 0%, var(--bg) 60%);
+        color: var(--text);
+      }
+      .page {
+        max-width: 980px;
+        margin: 0 auto;
+        padding: 1.25rem;
+        display: grid;
+        gap: 1rem;
+      }
+      .hero, .panel {
+        background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 1rem;
+      }
+      .hero h1 { margin: 0 0 0.5rem; font-size: 1.8rem; }
+      .hero p { margin: 0.3rem 0; color: var(--muted); }
+      .hero-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
+      }
+      .link-btn, button, select {
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--panel-2);
+        color: var(--text);
+        padding: 0.6rem 0.8rem;
+        font: inherit;
+      }
+      .link-btn { text-decoration: none; display: inline-block; }
+      .badges { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.6rem; }
+      .badge {
+        font-size: 0.85rem;
+        border: 1px solid var(--border);
+        background: rgba(119, 163, 255, 0.14);
+        color: #d6e4ff;
+        border-radius: 999px;
+        padding: 0.25rem 0.7rem;
+      }
+      .steps {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+        gap: 0.7rem;
+      }
+      .step {
+        border: 1px dashed var(--border);
+        border-radius: 10px;
+        padding: 0.7rem;
+        background: rgba(255,255,255,0.02);
+      }
+      .step small { color: var(--muted); display: block; margin-top: 0.2rem; }
+      #dropzone {
+        margin-top: 0.8rem;
+        border: 2px dashed #4b5f9f;
+        border-radius: 12px;
+        padding: 1.1rem;
+        text-align: center;
+        background: rgba(119, 163, 255, 0.08);
+        transition: 150ms ease;
+        cursor: pointer;
+      }
+      #dropzone.dragover {
+        border-color: var(--accent-2);
+        background: rgba(83, 215, 178, 0.12);
+        transform: translateY(-1px);
+      }
+      #fileInput { display: none; }
+      .controls {
+        margin-top: 0.8rem;
+        display: flex;
+        flex-wrap: wrap;
+        align-items: end;
+        gap: 0.6rem;
+      }
+      .controls label { display: grid; gap: 0.35rem; font-size: 0.92rem; }
+      button {
+        cursor: pointer;
+        background: linear-gradient(180deg, #2b3e73, #1f2e58);
+      }
+      button[disabled] { opacity: 0.55; cursor: not-allowed; }
+      .status {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 0.6rem;
+        margin-top: 0.8rem;
+      }
+      .stat {
+        border: 1px solid var(--border);
+        background: var(--panel);
+        border-radius: 10px;
+        padding: 0.7rem;
+      }
+      .stat strong { font-size: 1.03rem; display: block; }
+      .stat small { color: var(--muted); }
+      #output {
+        width: 100%;
+        min-height: 180px;
+        resize: vertical;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: #0f172d;
+        color: var(--text);
+        padding: 0.75rem;
+        font: 0.95rem/1.4 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      .hint, .warn { color: var(--muted); font-size: 0.92rem; }
+      .warn { color: #ffd0d0; }
+      pre {
+        margin: 0.35rem 0 0;
+        overflow-x: auto;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: #0f172d;
+        padding: 0.65rem;
+      }
+      @media (max-width: 640px) {
+        .hero-top { flex-direction: column; align-items: start; }
+      }
+    </style>
   </head>
   <body>
     <div class="page">
       <header class="hero">
-        <div>
-          <h1>Transcription Friend</h1>
-          <p>
-            Browser-first audio transcription with a dedicated file drop. For heavier jobs, install
-            locally and use GPU acceleration.
-          </p>
+        <div class="hero-top">
+          <div>
+            <h1>Transcription Friend</h1>
+            <p>
+              A guided way to turn speech into text. Works directly in your browser for quick jobs,
+              and supports local GPU workflows for larger files.
+            </p>
+          </div>
+          <a class="link-btn" href="https://github.com/Walliiee/transcription_friend">GitHub Repo</a>
         </div>
-        <a class="repo-link" href="https://github.com/Walliiee/transcription_friend">GitHub Repo</a>
+        <div class="badges">
+          <span class="badge">No upload to this site</span>
+          <span class="badge">m4a / mp3 / wav</span>
+          <span class="badge">Whisper models</span>
+          <span class="badge">Download transcript as .txt</span>
+        </div>
       </header>
 
-      <section class="panel drop-panel">
-        <h2>Drop your audio file here</h2>
-        <p class="muted">
-          Supports <strong>.m4a</strong>, <strong>.mp3</strong>, and <strong>.wav</strong>. Runs in your
-          browser using Whisper Web (no upload to this site).
+      <section class="panel">
+        <h2>What this can do</h2>
+        <div class="steps">
+          <div class="step"><strong>1) Pick audio</strong><small>Drag & drop or browse for a file.</small></div>
+          <div class="step"><strong>2) Choose model</strong><small>Tiny is fastest, Small is better quality.</small></div>
+          <div class="step"><strong>3) Transcribe</strong><small>Runs in your browser with on-device processing.</small></div>
+          <div class="step"><strong>4) Export text</strong><small>Copy or download the transcript instantly.</small></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Transcribe in browser</h2>
+        <p class="hint">
+          Best for short or medium clips. For long recordings and maximum speed, use local install + GPU below.
         </p>
-        <label id="dropzone" class="dropzone" for="fileInput">
+        <label id="dropzone" for="fileInput">
           <input id="fileInput" type="file" accept=".m4a,.mp3,.wav,audio/*" />
-          <p id="dropText"><strong>Browse files</strong> or drag and drop</p>
+          <strong id="dropText">Browse files</strong> or drag and drop audio here
         </label>
 
         <div class="controls">
@@ -39,50 +194,178 @@
             Model
             <select id="modelSelect">
               <option value="Xenova/whisper-tiny">whisper-tiny (fastest)</option>
-              <option value="Xenova/whisper-base">whisper-base</option>
-              <option value="Xenova/whisper-small">whisper-small</option>
+              <option value="Xenova/whisper-base">whisper-base (balanced)</option>
+              <option value="Xenova/whisper-small">whisper-small (better quality)</option>
             </select>
           </label>
-          <button id="transcribeBtn" disabled>Transcribe</button>
-          <button id="downloadBtn" disabled>Download transcript</button>
+          <button id="transcribeBtn" disabled>Start transcription</button>
+          <button id="downloadBtn" disabled>Download .txt</button>
         </div>
 
-        <div class="stats">
-          <div class="stat"><span id="filesCount">0</span><small>Files loaded</small></div>
-          <div class="stat"><span id="statusText">Idle</span><small>Status</small></div>
-          <div class="stat"><span id="durationText">-</span><small>Duration</small></div>
+        <div class="status">
+          <div class="stat"><strong id="fileName">No file selected</strong><small>Selected file</small></div>
+          <div class="stat"><strong id="durationText">-</strong><small>Audio duration</small></div>
+          <div class="stat"><strong id="statusText">Idle</strong><small>Current status</small></div>
         </div>
+        <p id="warningText" class="warn"></p>
       </section>
 
       <section class="panel">
         <h2>Transcript output</h2>
-        <pre id="output">No transcript yet.</pre>
+        <textarea id="output" spellcheck="false">No transcript yet.</textarea>
       </section>
 
-      <section class="panel install-panel">
-        <h2>Download + install locally</h2>
-        <p class="muted">
-          Local mode is best for longer files and GPU speed. Choose either direct repo download or
-          one-command setup.
+      <section class="panel">
+        <h2>Use local GPU mode (recommended for larger files)</h2>
+        <p class="hint">
+          Local mode uses your machine and can be much faster for long recordings.
         </p>
-        <div class="install-grid">
-          <div>
-            <h3>Download repository</h3>
-            <a class="button-link" href="https://github.com/Walliiee/transcription_friend/archive/refs/heads/main.zip">
-              Download ZIP
-            </a>
-          </div>
-          <div>
-            <h3>Linux / macOS</h3>
+        <div class="steps">
+          <div class="step">
+            <strong>Linux / macOS</strong>
             <pre><code>bash -c "$(curl -fsSL https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.sh)"</code></pre>
           </div>
-          <div>
-            <h3>Windows PowerShell</h3>
+          <div class="step">
+            <strong>Windows PowerShell</strong>
             <pre><code>irm https://raw.githubusercontent.com/Walliiee/transcription_friend/main/scripts/install.ps1 | iex</code></pre>
           </div>
         </div>
       </section>
     </div>
-    <script type="module" src="./web.js"></script>
+
+    <script type="module">
+      import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2";
+
+      env.allowLocalModels = false;
+
+      const fileInput = document.getElementById("fileInput");
+      const dropzone = document.getElementById("dropzone");
+      const dropText = document.getElementById("dropText");
+      const modelSelect = document.getElementById("modelSelect");
+      const transcribeBtn = document.getElementById("transcribeBtn");
+      const downloadBtn = document.getElementById("downloadBtn");
+      const fileName = document.getElementById("fileName");
+      const durationText = document.getElementById("durationText");
+      const statusText = document.getElementById("statusText");
+      const warningText = document.getElementById("warningText");
+      const output = document.getElementById("output");
+
+      let selectedFile = null;
+      let currentTranscript = "";
+      let asr = null;
+      let activeModel = "";
+
+      function setStatus(message) {
+        statusText.textContent = message;
+      }
+
+      function formatSeconds(seconds) {
+        if (!Number.isFinite(seconds)) return "-";
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.round(seconds % 60);
+        return `${mins}m ${secs}s`;
+      }
+
+      async function detectDuration(file) {
+        return new Promise((resolve) => {
+          const audio = document.createElement("audio");
+          audio.preload = "metadata";
+          audio.onloadedmetadata = () => {
+            URL.revokeObjectURL(audio.src);
+            resolve(audio.duration);
+          };
+          audio.onerror = () => resolve(NaN);
+          audio.src = URL.createObjectURL(file);
+        });
+      }
+
+      async function handleSelectedFile(file) {
+        selectedFile = file;
+        currentTranscript = "";
+        output.value = "No transcript yet.";
+        downloadBtn.disabled = true;
+        fileName.textContent = file.name;
+        dropText.textContent = file.name;
+        setStatus("File ready");
+        warningText.textContent = "";
+        transcribeBtn.disabled = false;
+        const duration = await detectDuration(file);
+        durationText.textContent = formatSeconds(duration);
+        if (duration > 1200) {
+          warningText.textContent = "Large file detected. Browser mode may be slow; local GPU mode is recommended.";
+        }
+      }
+
+      fileInput.addEventListener("change", (event) => {
+        const file = event.target.files?.[0];
+        if (file) handleSelectedFile(file);
+      });
+
+      ["dragenter", "dragover"].forEach((name) => {
+        dropzone.addEventListener(name, (event) => {
+          event.preventDefault();
+          dropzone.classList.add("dragover");
+        });
+      });
+      ["dragleave", "drop"].forEach((name) => {
+        dropzone.addEventListener(name, (event) => {
+          event.preventDefault();
+          dropzone.classList.remove("dragover");
+        });
+      });
+      dropzone.addEventListener("drop", (event) => {
+        const file = event.dataTransfer?.files?.[0];
+        if (file) handleSelectedFile(file);
+      });
+
+      async function getPipeline(modelId) {
+        if (!asr || activeModel !== modelId) {
+          setStatus(`Loading ${modelId.split("/")[1]}...`);
+          asr = await pipeline("automatic-speech-recognition", modelId);
+          activeModel = modelId;
+        }
+        return asr;
+      }
+
+      transcribeBtn.addEventListener("click", async () => {
+        if (!selectedFile) return;
+        transcribeBtn.disabled = true;
+        warningText.textContent = "";
+        try {
+          const modelId = modelSelect.value;
+          const runner = await getPipeline(modelId);
+          setStatus("Transcribing...");
+          output.value = "Working on transcription...";
+
+          const result = await runner(selectedFile, {
+            chunk_length_s: 30,
+            stride_length_s: 5,
+          });
+
+          currentTranscript = (result?.text || "").trim();
+          output.value = currentTranscript || "No spoken content detected.";
+          setStatus("Done");
+          downloadBtn.disabled = !currentTranscript;
+        } catch (error) {
+          console.error(error);
+          setStatus("Error");
+          warningText.textContent = "Transcription failed in browser. Try a smaller model or local GPU mode.";
+          output.value = "Transcription failed. See browser console for details.";
+        } finally {
+          transcribeBtn.disabled = false;
+        }
+      });
+
+      downloadBtn.addEventListener("click", () => {
+        if (!currentTranscript) return;
+        const textFile = new Blob([currentTranscript], { type: "text/plain;charset=utf-8" });
+        const link = document.createElement("a");
+        const base = selectedFile?.name?.replace(/\.[^.]+$/, "") || "transcript";
+        link.href = URL.createObjectURL(textFile);
+        link.download = `${base}_transcript.txt`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+      });
+    </script>
   </body>
 </html>
