@@ -3,8 +3,8 @@ from pathlib import Path
 import config
 
 
-def test_get_interview_paths_uses_expected_structure():
-    base_dir = Path("/tmp/project")
+def test_get_interview_paths_uses_expected_structure(tmp_path):
+    base_dir = tmp_path / "project"
     paths = config.get_interview_paths("Alice", base_dir=base_dir)
 
     assert paths["base"] == base_dir / "interviews" / "Alice"
