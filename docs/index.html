@@ -626,8 +626,7 @@
     <div class="copy-toast" id="copyToast">Copied!</div>
 
     <script type="module">
-      import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2";
-      env.allowLocalModels = false;
+      import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3";
 
       /* ── DOM refs ──────────────────────────────── */
       const $ = (id) => document.getElementById(id);
@@ -759,48 +758,6 @@
         if (e.dataTransfer?.files?.[0]) onFileSelected(e.dataTransfer.files[0]);
       });
 
-      /* ── Audio decoding ───────────────────────── */
-      const TARGET_SR = 16000;
-
-      async function decodeAudio(file) {
-        showProgress("Reading audio file...");
-        setStatus("Decoding audio...");
-        const arrayBuf = await file.arrayBuffer();
-        const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: TARGET_SR });
-        let decoded;
-        try {
-          decoded = await ctx.decodeAudioData(arrayBuf);
-        } catch (e) {
-          ctx.close();
-          throw new Error(
-            `Your browser couldn't decode this ${file.name.split(".").pop()} file. ` +
-            "Try converting it to .wav or .mp3 first, or use a different browser (Chrome works best)."
-          );
-        }
-        let samples;
-        if (decoded.numberOfChannels === 1) {
-          samples = decoded.getChannelData(0);
-        } else {
-          const left  = decoded.getChannelData(0);
-          const right = decoded.getChannelData(1);
-          samples = new Float32Array(left.length);
-          for (let i = 0; i < left.length; i++) {
-            samples[i] = (left[i] + right[i]) / 2;
-          }
-        }
-        if (decoded.sampleRate !== TARGET_SR) {
-          const ratio  = decoded.sampleRate / TARGET_SR;
-          const newLen = Math.round(samples.length / ratio);
-          const resampled = new Float32Array(newLen);
-          for (let i = 0; i < newLen; i++) {
-            resampled[i] = samples[Math.round(i * ratio)];
-          }
-          samples = resampled;
-        }
-        ctx.close();
-        return samples;
-      }
-
       /* ── Model pipeline ────────────────────────── */
       async function getRunner(modelId) {
         if (asr && activeModel === modelId) return asr;
@@ -820,18 +777,18 @@
         hideWarning();
         setStep(3);
 
+        let audioUrl;
         try {
-          const audioData = await decodeAudio(selectedFile);
           const runner = await getRunner(modelSelect.value);
           showProgress("Transcribing your audio...");
           setStatus("Transcribing...");
           output.value = "";
           output.classList.remove("placeholder");
 
-          const result = await runner(audioData, {
+          audioUrl = URL.createObjectURL(selectedFile);
+          const result = await runner(audioUrl, {
             chunk_length_s: 30,
             stride_length_s: 5,
-            sampling_rate: TARGET_SR,
           });
 
           transcript = (result?.text || "").trim();
@@ -844,15 +801,18 @@
         } catch (err) {
           console.error(err);
           setStatus("Failed");
-          const msg = err.message?.includes("browser couldn't decode")
-            ? err.message
-            : "Transcription failed. Try the 'Fast' quality setting, a different file format, or local GPU mode.";
+          const isFormat = err.message?.includes("Unable to load audio")
+            || err.message?.includes("EncodingError")
+            || err.message?.includes("decodeAudioData");
+          const msg = isFormat
+            ? `Couldn't decode this .${selectedFile.name.split(".").pop()} file. Try converting to .wav or .mp3, or use Chrome.`
+            : "Transcription failed. Try the 'Fast' quality setting, a different file format (.wav/.mp3), or use local GPU mode.";
           showWarning(msg, "error");
-          output.value = "";
+          output.value = "Something went wrong. See the error above for suggestions.";
           output.classList.add("placeholder");
-          output.value = "Something went wrong. See the error message above for suggestions.";
           hideProgress();
         } finally {
+          if (audioUrl) URL.revokeObjectURL(audioUrl);
           transcribeBtn.classList.remove("loading");
           transcribeBtn.disabled = false;
           transcribeTxt.textContent = "Transcribe";
