@@ -81,6 +81,26 @@ python scripts/transcribe.py --audio "interviews/Person/audio/interview.m4a" --n
 python scripts/postprocess.py --input "interviews/Person/transcriptions/Person_transcription_da.txt" --language da
 ```
 
+### Local Web UI (Upload → Transcribe → Download)
+
+Run a local server-backed Whisper API and open the browser UI from the same host:
+
+```bash
+# Start local web server + API
+python scripts/web_api.py --host 127.0.0.1 --port 8000
+
+# Then open
+http://127.0.0.1:8000/
+```
+
+Features in web mode:
+- Drag-and-drop upload
+- Presets: Fast, Balanced, Best (with model size variants)
+- Language select + auto-detect toggle
+- Live job status polling (queued/loading/transcribing/postprocessing/done)
+- Copy/download plain or timestamped transcript
+- Optional post-processing corrections
+
 ## Hardware Requirements
 
 - **GPU:** NVIDIA GeForce RTX 5060 Laptop GPU
