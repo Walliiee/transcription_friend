@@ -6,7 +6,7 @@
     <title>Transcription Friend — Turn Audio into Text</title>
     <meta
       name="description"
-      content="Free, private audio-to-text transcription that runs entirely in your browser. No sign-up, no uploads. Just drop a file and get your transcript."
+      content="Upload audio, transcribe with Whisper, and download text from a local server-backed workflow."
     />
     <style>
       /* ── Reset & Tokens ───────────────────────────────── */
@@ -468,13 +468,13 @@
         <div class="hero-icon" aria-hidden="true">&#127908;</div>
         <h1>Transcription Friend</h1>
         <p class="subtitle">
-          Turn any audio recording into text, right here in your browser.
-          No account needed. Your files never leave your device.
+          Turn any audio recording into text with a local Whisper backend.
+          Upload, transcribe, and download in one flow.
         </p>
         <div class="trust-row">
-          <span class="trust-pill">100% Private</span>
+          <span class="trust-pill">Local-first workflow</span>
           <span class="trust-pill">No sign-up</span>
-          <span class="trust-pill">Works offline after first load</span>
+          <span class="trust-pill">Server-backed Whisper</span>
           <span class="trust-pill">m4a, mp3, wav</span>
         </div>
       </header>
@@ -482,7 +482,7 @@
       <!-- ── How it works ─────────────────────────── -->
       <section class="card">
         <h2>How it works</h2>
-        <p class="desc">Four quick steps — everything happens on your device.</p>
+        <p class="desc">Four quick steps — local upload, server transcription, instant export.</p>
         <div class="flow">
           <div class="flow-step active" id="step1">
             <span class="num">1</span>
@@ -510,7 +510,7 @@
       <!-- ── Main transcription area ──────────────── -->
       <section class="card" id="transcribeCard">
         <h2>Start transcribing</h2>
-        <p class="desc">Drop your audio file below and hit the button — that's it.</p>
+        <p class="desc">Drop your audio file, pick options, and start transcription.</p>
 
         <!-- Drop zone -->
         <div class="dropzone-wrap">
@@ -528,15 +528,39 @@
           <div class="field">
             <span class="field-label">Transcription quality</span>
             <select id="modelSelect" aria-label="Choose transcription quality">
-              <option value="Xenova/whisper-tiny">Fast — good for clear speech</option>
-              <option value="Xenova/whisper-base" selected>Balanced — recommended</option>
-              <option value="Xenova/whisper-small">Best — slower but more accurate</option>
+              <option value="fast:tiny">Fast — tiny (quickest)</option>
+              <option value="fast:base">Fast — base</option>
+              <option value="balanced:small" selected>Balanced — small (recommended)</option>
+              <option value="best:medium">Best — medium</option>
+              <option value="best:large">Best — large (slowest)</option>
+            </select>
+          </div>
+          <div class="field">
+            <span class="field-label">Language</span>
+            <select id="languageSelect" aria-label="Choose language">
+              <option value="da">Danish</option>
+              <option value="en" selected>English</option>
+            </select>
+          </div>
+          <div class="field">
+            <span class="field-label">Options</span>
+            <label><input type="checkbox" id="autoDetectToggle" checked /> Auto-detect language</label>
+            <label><input type="checkbox" id="postprocessToggle" checked /> Apply post-processing</label>
+          </div>
+          <div class="field">
+            <span class="field-label">Device</span>
+            <select id="deviceSelect" aria-label="Choose device">
+              <option value="cuda" selected>GPU (cuda)</option>
+              <option value="cpu">CPU</option>
             </select>
           </div>
           <button class="btn btn-primary" id="transcribeBtn" disabled>
             <span class="spinner"></span>
             <span class="icon">&#9654;</span>
             <span id="transcribeBtnText">Transcribe</span>
+          </button>
+          <button class="btn btn-secondary" id="retryBtn" disabled>
+            <span class="icon">&#8635;</span> Retry
           </button>
         </div>
 
@@ -553,6 +577,10 @@
           <div class="status-item">
             <span class="val" id="statusDisplay">Ready</span>
             <span class="lbl">Status</span>
+          </div>
+          <div class="status-item">
+            <span class="val" id="etaDisplay">—</span>
+            <span class="lbl">Estimated time</span>
           </div>
         </div>
 
@@ -585,6 +613,13 @@
           <button class="btn btn-secondary" id="downloadBtn" disabled>
             <span class="icon">&#128190;</span> Download as .txt
           </button>
+          <button class="btn btn-secondary" id="downloadTimestampBtn" disabled>
+            <span class="icon">&#128337;</span> Download with timestamps
+          </button>
+        </div>
+        <div style="margin-top: .85rem;">
+          <h3 style="font-size:.95rem;margin-bottom:.35rem;">Recent transcripts</h3>
+          <ul id="recentList" style="color:var(--text-soft);padding-left:1rem;"></ul>
         </div>
       </section>
 
@@ -637,11 +672,17 @@
       const dropHint        = $("dropHint");
       const dropFileInfo    = $("dropFileInfo");
       const modelSelect     = $("modelSelect");
+      const languageSelect  = $("languageSelect");
+      const autoDetectToggle = $("autoDetectToggle");
+      const postprocessToggle = $("postprocessToggle");
+      const deviceSelect = $("deviceSelect");
       const transcribeBtn   = $("transcribeBtn");
       const transcribeTxt   = $("transcribeBtnText");
+      const retryBtn        = $("retryBtn");
       const fileNameDisplay = $("fileNameDisplay");
       const durationDisplay = $("durationDisplay");
       const statusDisplay   = $("statusDisplay");
+      const etaDisplay      = $("etaDisplay");
       const progressWrap    = $("progressWrap");
       const progressFill    = $("progressFill");
       const progressLabel   = $("progressLabel");
@@ -650,17 +691,21 @@
       const output          = $("output");
       const copyBtn         = $("copyBtn");
       const downloadBtn     = $("downloadBtn");
+      const downloadTimestampBtn = $("downloadTimestampBtn");
       const copyToast       = $("copyToast");
       const installToggle   = $("installToggle");
       const installBody     = $("installBody");
+      const recentList      = $("recentList");
 
       const steps = [1,2,3,4].map(n => $("step" + n));
 
       /* ── State ─────────────────────────────────── */
       let selectedFile = null;
       let transcript   = "";
-      let asr          = null;
-      let activeModel  = "";
+      let timestampedTranscript = "";
+      let activeJobId = "";
+      let activePoll = null;
+      let lastRequest = null;
 
       /* ── Helpers ───────────────────────────────── */
       function setStep(current) {
@@ -672,6 +717,7 @@
       }
 
       function setStatus(msg) { statusDisplay.textContent = msg; }
+      function setEta(msg) { etaDisplay.textContent = msg; }
 
       function showWarning(msg, type = "warn") {
         warningBox.className = "warning visible " + type;
@@ -689,6 +735,11 @@
         progressWrap.classList.remove("visible");
         progressFill.classList.remove("indeterminate");
       }
+      function setProgressPercent(value) {
+        progressWrap.classList.add("visible");
+        progressFill.classList.remove("indeterminate");
+        progressFill.style.width = `${Math.max(0, Math.min(100, value))}%`;
+      }
 
       function formatDuration(sec) {
         if (!Number.isFinite(sec)) return "—";
@@ -704,6 +755,54 @@
         setTimeout(() => copyToast.classList.remove("show"), 1800);
       }
 
+      function prettySeconds(total) {
+        if (!Number.isFinite(total) || total <= 0) return "—";
+        const mins = Math.floor(total / 60);
+        const secs = Math.round(total % 60);
+        return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+      }
+
+      function setBusy(busy) {
+        transcribeBtn.classList.toggle("loading", busy);
+        transcribeBtn.disabled = busy || !selectedFile;
+        retryBtn.disabled = busy || !lastRequest;
+        transcribeTxt.textContent = busy ? "Working..." : "Transcribe";
+      }
+
+      function validateFile(file) {
+        const allowed = [".m4a", ".mp3", ".wav", ".mp4", ".m4b", ".aac", ".flac", ".ogg"];
+        const lower = file.name.toLowerCase();
+        const ok = allowed.some((ext) => lower.endsWith(ext));
+        if (!ok) return "Unsupported file format. Use m4a, mp3, wav, mp4, m4b, aac, flac, or ogg.";
+        if (file.size > 200 * 1024 * 1024) return "File is too large. Max size is 200 MB.";
+        return "";
+      }
+
+      function saveRecent(entry) {
+        const key = "transcription_friend_recent";
+        const existing = JSON.parse(localStorage.getItem(key) || "[]");
+        const updated = [entry, ...existing.filter((x) => x.id !== entry.id)].slice(0, 10);
+        localStorage.setItem(key, JSON.stringify(updated));
+        renderRecent();
+      }
+
+      function renderRecent() {
+        const key = "transcription_friend_recent";
+        const items = JSON.parse(localStorage.getItem(key) || "[]");
+        recentList.innerHTML = "";
+        if (!items.length) {
+          const li = document.createElement("li");
+          li.textContent = "No completed transcripts yet.";
+          recentList.appendChild(li);
+          return;
+        }
+        items.forEach((item) => {
+          const li = document.createElement("li");
+          li.textContent = `${item.name} — ${item.model} — ${item.when}`;
+          recentList.appendChild(li);
+        });
+      }
+
       async function getDuration(file) {
         return new Promise((resolve) => {
           const a = document.createElement("audio");
@@ -716,12 +815,21 @@
 
       /* ── File selection ────────────────────────── */
       async function onFileSelected(file) {
+        const validationError = validateFile(file);
+        if (validationError) {
+          showWarning(validationError, "error");
+          return;
+        }
         selectedFile = file;
         transcript = "";
+        timestampedTranscript = "";
+        activeJobId = "";
+        if (activePoll) clearInterval(activePoll);
         output.value = "Your transcript will appear here after processing.";
         output.classList.add("placeholder");
         downloadBtn.disabled = true;
         copyBtn.disabled = true;
+        downloadTimestampBtn.disabled = true;
         hideWarning();
 
         dropzone.classList.add("has-file");
@@ -730,6 +838,7 @@
         dropHint.textContent = "Click or drop to change file";
         fileNameDisplay.textContent = file.name;
         transcribeBtn.disabled = false;
+        retryBtn.disabled = !lastRequest;
 
         setStep(2);
         setStatus("File ready");
@@ -738,9 +847,10 @@
         durationDisplay.textContent = formatDuration(dur);
         const sizeKB = (file.size / 1024).toFixed(0);
         dropFileInfo.textContent = `${formatDuration(dur)} — ${sizeKB > 1024 ? (file.size / 1048576).toFixed(1) + " MB" : sizeKB + " KB"}`;
+        setEta(prettySeconds(Math.max(20, (file.size / (1024 * 1024)) * DEFAULT_SECONDS_PER_MB)));
 
         if (dur > 1200) {
-          showWarning("This file is over 20 minutes. Browser mode will be slow — consider using local GPU mode below.", "warn");
+          showWarning("This file is over 20 minutes. Transcription may take a while. Consider local GPU mode below.", "warn");
         }
       }
 
@@ -758,24 +868,55 @@
         if (e.dataTransfer?.files?.[0]) onFileSelected(e.dataTransfer.files[0]);
       });
 
-      /* ── Model pipeline ────────────────────────── */
-      async function getRunner(modelId) {
-        if (asr && activeModel === modelId) return asr;
-        showProgress("Downloading AI model (first time may take a moment)...");
-        setStatus("Loading model...");
-        asr = await pipeline("automatic-speech-recognition", modelId);
-        activeModel = modelId;
-        return asr;
+      async function createJob(requestPayload) {
+        const form = new FormData();
+        form.append("audio", selectedFile);
+        form.append("preset", requestPayload.preset);
+        form.append("model_size", requestPayload.modelSize);
+        form.append("language", requestPayload.language);
+        form.append("auto_detect", String(requestPayload.autoDetect));
+        form.append("postprocess", String(requestPayload.postprocess));
+        form.append("device", requestPayload.device);
+
+        const response = await fetch(`${API_BASE}/api/transcriptions`, {
+          method: "POST",
+          body: form,
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Failed to create job");
+        return data;
+      }
+
+      async function fetchStatus(jobId) {
+        const response = await fetch(`${API_BASE}/api/transcriptions/${jobId}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Failed to fetch status");
+        return data;
+      }
+
+      async function fetchResult(jobId, timestamps = false) {
+        const response = await fetch(`${API_BASE}/api/transcriptions/${jobId}/result?timestamps=${timestamps}`);
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Failed to fetch result");
+        return data;
+      }
+
+      function parsePresetModel(value) {
+        const [preset, modelSize] = value.split(":");
+        return { preset, modelSize };
       }
 
       /* ── Transcription ─────────────────────────── */
       transcribeBtn.addEventListener("click", async () => {
         if (!selectedFile) return;
-        transcribeBtn.disabled = true;
-        transcribeBtn.classList.add("loading");
-        transcribeTxt.textContent = "Working...";
+        setBusy(true);
         hideWarning();
         setStep(3);
+        setStatus("Uploading...");
+        showProgress("Uploading file...", true);
+        output.value = "";
+        output.classList.remove("placeholder");
+        if (activePoll) clearInterval(activePoll);
 
         let audioUrl;
         try {
@@ -819,6 +960,11 @@
         }
       });
 
+      retryBtn.addEventListener("click", () => {
+        if (!lastRequest || !selectedFile) return;
+        transcribeBtn.click();
+      });
+
       /* ── Copy + Download ───────────────────────── */
       copyBtn.addEventListener("click", async () => {
         const text = output.value;
@@ -845,6 +991,17 @@
         URL.revokeObjectURL(a.href);
       });
 
+      downloadTimestampBtn.addEventListener("click", () => {
+        if (!timestampedTranscript) return;
+        const blob = new Blob([timestampedTranscript], { type: "text/plain;charset=utf-8" });
+        const a = document.createElement("a");
+        const base = selectedFile?.name?.replace(/\.[^.]+$/, "") || "transcript";
+        a.href = URL.createObjectURL(blob);
+        a.download = `${base}_transcript_timestamped.txt`;
+        a.click();
+        URL.revokeObjectURL(a.href);
+      });
+
       /* ── Install section toggle ────────────────── */
       installToggle.addEventListener("click", () => {
         const open = installBody.classList.toggle("open");
@@ -859,6 +1016,12 @@
           }
         });
       });
+
+      window.addEventListener("beforeunload", () => {
+        if (activePoll) clearInterval(activePoll);
+      });
+
+      renderRecent();
     </script>
   </body>
 </html>
