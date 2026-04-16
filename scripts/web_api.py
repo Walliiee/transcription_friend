@@ -2,6 +2,8 @@
 """
 Local web API for server-backed transcription.
 
+Intended for local, single-instance use (not a production job queue).
+
 Run:
     python scripts/web_api.py --host 127.0.0.1 --port 8000
 """
@@ -11,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import tempfile
 import threading
 import uuid
 from datetime import datetime, timezone
@@ -25,7 +28,7 @@ from utils.whisper_helpers import load_model, transcribe_file
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 DOCS_DIR = BASE_DIR / "docs"
-RUNTIME_DIR = Path("/tmp/transcription_friend_web")
+RUNTIME_DIR = Path(tempfile.gettempdir()) / "transcription_friend_web"
 UPLOAD_DIR = RUNTIME_DIR / "uploads"
 RESULTS_DIR = RUNTIME_DIR / "results"
 MAX_UPLOAD_BYTES = 200 * 1024 * 1024
@@ -49,6 +52,13 @@ app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
 
 def now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+def parse_iso_datetime(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value)
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed
 
 
 def sanitize_filename(name: str) -> str:
@@ -135,9 +145,8 @@ def process_job(job_id: str) -> None:
             plain_text = apply_text_corrections(plain_text, info["language"])
             timestamped_text = clean_formatting(timestamped_text)
 
-        out_base = sanitize_filename(job["source_stem"])
-        plain_path = RESULTS_DIR / f"{job_id}_{out_base}_transcript.txt"
-        time_path = RESULTS_DIR / f"{job_id}_{out_base}_transcript_timestamped.txt"
+        plain_path = RESULTS_DIR / f"{job_id}_transcript.txt"
+        time_path = RESULTS_DIR / f"{job_id}_transcript_timestamped.txt"
         plain_path.write_text(plain_text, encoding="utf-8")
         time_path.write_text(timestamped_text, encoding="utf-8")
 
@@ -200,7 +209,7 @@ def create_transcription():
     job_id = uuid.uuid4().hex
     filename = sanitize_filename(audio.filename)
     source_stem = Path(filename).stem
-    upload_path = UPLOAD_DIR / f"{job_id}_{filename}"
+    upload_path = UPLOAD_DIR / f"{job_id}.upload"
     audio.save(upload_path)
     file_size = upload_path.stat().st_size
 
@@ -246,7 +255,7 @@ def get_transcription_status(job_id: str):
     if job is None:
         return jsonify({"error": "Job not found"}), 404
 
-    created = datetime.fromisoformat(job["created_at"])
+    created = parse_iso_datetime(job["created_at"])
     age_seconds = (datetime.now(timezone.utc) - created).total_seconds()
     timed_out = age_seconds > JOB_TIMEOUT_SECONDS and job["status"] not in {"completed", "failed"}
     if timed_out:
@@ -318,7 +327,11 @@ def download_transcription(job_id: str):
 @app.route("/api/transcriptions/recent", methods=["GET"])
 def recent_jobs():
     with jobs_lock:
-        ordered = sorted(jobs.values(), key=lambda x: x["created_at"], reverse=True)[:10]
+        ordered = sorted(
+            jobs.values(),
+            key=lambda x: parse_iso_datetime(x["created_at"]),
+            reverse=True,
+        )[:10]
     return jsonify(
         [
             {

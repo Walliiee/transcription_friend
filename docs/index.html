@@ -547,6 +547,13 @@
             <label><input type="checkbox" id="autoDetectToggle" checked /> Auto-detect language</label>
             <label><input type="checkbox" id="postprocessToggle" checked /> Apply post-processing</label>
           </div>
+          <div class="field">
+            <span class="field-label">Device</span>
+            <select id="deviceSelect" aria-label="Choose device">
+              <option value="cuda" selected>GPU (cuda)</option>
+              <option value="cpu">CPU</option>
+            </select>
+          </div>
           <button class="btn btn-primary" id="transcribeBtn" disabled>
             <span class="spinner"></span>
             <span class="icon">&#9654;</span>
@@ -654,7 +661,10 @@
     <div class="copy-toast" id="copyToast">Copied!</div>
 
     <script type="module">
+      // Keep empty when serving docs from scripts/web_api.py (same origin).
       const API_BASE = "";
+      const DEFAULT_SECONDS_PER_MB = 4;
+      const POLL_INTERVAL_MS = 1500;
 
       /* ── DOM refs ──────────────────────────────── */
       const $ = (id) => document.getElementById(id);
@@ -668,6 +678,7 @@
       const languageSelect  = $("languageSelect");
       const autoDetectToggle = $("autoDetectToggle");
       const postprocessToggle = $("postprocessToggle");
+      const deviceSelect = $("deviceSelect");
       const transcribeBtn   = $("transcribeBtn");
       const transcribeTxt   = $("transcribeBtnText");
       const retryBtn        = $("retryBtn");
@@ -839,7 +850,7 @@
         durationDisplay.textContent = formatDuration(dur);
         const sizeKB = (file.size / 1024).toFixed(0);
         dropFileInfo.textContent = `${formatDuration(dur)} — ${sizeKB > 1024 ? (file.size / 1048576).toFixed(1) + " MB" : sizeKB + " KB"}`;
-        setEta(prettySeconds(Math.max(20, (file.size / (1024 * 1024)) * 4)));
+        setEta(prettySeconds(Math.max(20, (file.size / (1024 * 1024)) * DEFAULT_SECONDS_PER_MB)));
 
         if (dur > 1200) {
           showWarning("This file is over 20 minutes. Transcription may take a while. Consider local GPU mode below.", "warn");
@@ -868,7 +879,7 @@
         form.append("language", requestPayload.language);
         form.append("auto_detect", String(requestPayload.autoDetect));
         form.append("postprocess", String(requestPayload.postprocess));
-        form.append("device", "cuda");
+        form.append("device", requestPayload.device);
 
         const response = await fetch(`${API_BASE}/api/transcriptions`, {
           method: "POST",
@@ -918,6 +929,7 @@
             language: languageSelect.value,
             autoDetect: autoDetectToggle.checked,
             postprocess: postprocessToggle.checked,
+            device: deviceSelect.value,
           };
 
           const created = await createJob(lastRequest);
@@ -973,7 +985,7 @@
               setBusy(false);
               showWarning(`Status polling failed: ${pollError.message}`, "error");
             }
-          }, 1500);
+          }, POLL_INTERVAL_MS);
         } catch (err) {
           console.error(err);
           setStatus("Failed");
