@@ -661,10 +661,7 @@
     <div class="copy-toast" id="copyToast">Copied!</div>
 
     <script type="module">
-      // Keep empty when serving docs from scripts/web_api.py (same origin).
-      const API_BASE = "";
-      const DEFAULT_SECONDS_PER_MB = 4;
-      const POLL_INTERVAL_MS = 1500;
+      import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3";
 
       /* ── DOM refs ──────────────────────────────── */
       const $ = (id) => document.getElementById(id);
@@ -921,80 +918,45 @@
         output.classList.remove("placeholder");
         if (activePoll) clearInterval(activePoll);
 
+        let audioUrl;
         try {
-          const { preset, modelSize } = parsePresetModel(modelSelect.value);
-          lastRequest = {
-            preset,
-            modelSize,
-            language: languageSelect.value,
-            autoDetect: autoDetectToggle.checked,
-            postprocess: postprocessToggle.checked,
-            device: deviceSelect.value,
-          };
+          const runner = await getRunner(modelSelect.value);
+          showProgress("Transcribing your audio...");
+          setStatus("Transcribing...");
+          output.value = "";
+          output.classList.remove("placeholder");
 
-          const created = await createJob(lastRequest);
-          activeJobId = created.job_id;
-          setEta(prettySeconds(created.estimate_seconds));
-          setStatus("Queued");
-          setProgressPercent(10);
-          progressLabel.textContent = "Queued";
+          audioUrl = URL.createObjectURL(selectedFile);
+          const result = await runner(audioUrl, {
+            chunk_length_s: 30,
+            stride_length_s: 5,
+          });
 
-          activePoll = setInterval(async () => {
-            try {
-              const status = await fetchStatus(activeJobId);
-              setStatus(status.message || status.status);
-              setProgressPercent(status.progress ?? 0);
-              progressLabel.textContent = status.message || "Working...";
-
-              if (status.status === "failed") {
-                clearInterval(activePoll);
-                activePoll = null;
-                setBusy(false);
-                setStatus("Failed");
-                showWarning(status.error || "Transcription failed.", "error");
-                output.value = "Transcription failed. You can retry with a faster preset.";
-                output.classList.remove("placeholder");
-                return;
-              }
-
-              if (status.status === "completed") {
-                clearInterval(activePoll);
-                activePoll = null;
-                const plain = await fetchResult(activeJobId, false);
-                const withTime = await fetchResult(activeJobId, true);
-                transcript = (plain.transcript || "").trim();
-                timestampedTranscript = (withTime.transcript || "").trim();
-                output.value = transcript || "No speech detected in this file.";
-                setStatus("Done!");
-                setStep(4);
-                copyBtn.disabled = !transcript;
-                downloadBtn.disabled = !transcript;
-                downloadTimestampBtn.disabled = !timestampedTranscript;
-                hideProgress();
-                setBusy(false);
-                saveRecent({
-                  id: activeJobId,
-                  name: selectedFile.name,
-                  model: `${lastRequest.preset}/${lastRequest.modelSize}`,
-                  when: new Date().toLocaleString(),
-                });
-              }
-            } catch (pollError) {
-              clearInterval(activePoll);
-              activePoll = null;
-              setBusy(false);
-              showWarning(`Status polling failed: ${pollError.message}`, "error");
-            }
-          }, POLL_INTERVAL_MS);
+          transcript = (result?.text || "").trim();
+          output.value = transcript || "No speech detected in this file.";
+          setStatus("Done!");
+          setStep(4);
+          downloadBtn.disabled = !transcript;
+          copyBtn.disabled = !transcript;
+          hideProgress();
         } catch (err) {
           console.error(err);
           setStatus("Failed");
-          showWarning(err.message || "Transcription failed. Try the 'Fast' preset.", "error");
-          output.value = "";
+          const isFormat = err.message?.includes("Unable to load audio")
+            || err.message?.includes("EncodingError")
+            || err.message?.includes("decodeAudioData");
+          const msg = isFormat
+            ? `Couldn't decode this .${selectedFile.name.split(".").pop()} file. Try converting to .wav or .mp3, or use Chrome.`
+            : "Transcription failed. Try the 'Fast' quality setting, a different file format (.wav/.mp3), or use local GPU mode.";
+          showWarning(msg, "error");
+          output.value = "Something went wrong. See the error above for suggestions.";
           output.classList.add("placeholder");
-          output.value = "Something went wrong. Ensure the local API server is running.";
           hideProgress();
-          setBusy(false);
+        } finally {
+          if (audioUrl) URL.revokeObjectURL(audioUrl);
+          transcribeBtn.classList.remove("loading");
+          transcribeBtn.disabled = false;
+          transcribeTxt.textContent = "Transcribe";
         }
       });
 
