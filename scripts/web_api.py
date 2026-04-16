@@ -15,7 +15,7 @@ import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 from flask import Flask, jsonify, request, send_from_directory
 
@@ -38,9 +38,9 @@ MODEL_PRESETS = {
     "best": "medium",
 }
 
-jobs: Dict[str, Dict[str, Any]] = {}
+jobs: dict[str, dict[str, Any]] = {}
 jobs_lock = threading.Lock()
-models: Dict[str, Any] = {}
+models: dict[str, Any] = {}
 models_lock = threading.Lock()
 
 app = Flask(__name__, static_folder=str(DOCS_DIR), static_url_path="")
@@ -155,7 +155,7 @@ def process_job(job_id: str) -> None:
             audio_duration_seconds=info["duration"],
             elapsed_seconds=elapsed,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         update_job(job_id, status="failed", progress=100, message="Failed", error=str(exc))
 
 
