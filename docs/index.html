@@ -626,8 +626,7 @@
     <div class="copy-toast" id="copyToast">Copied!</div>
 
     <script type="module">
-      import { pipeline, env } from "https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2";
-      env.allowLocalModels = false;
+      import { pipeline } from "https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3";
 
       /* ── DOM refs ──────────────────────────────── */
       const $ = (id) => document.getElementById(id);
@@ -778,6 +777,7 @@
         hideWarning();
         setStep(3);
 
+        let audioUrl;
         try {
           const runner = await getRunner(modelSelect.value);
           showProgress("Transcribing your audio...");
@@ -785,7 +785,8 @@
           output.value = "";
           output.classList.remove("placeholder");
 
-          const result = await runner(selectedFile, {
+          audioUrl = URL.createObjectURL(selectedFile);
+          const result = await runner(audioUrl, {
             chunk_length_s: 30,
             stride_length_s: 5,
           });
@@ -800,12 +801,18 @@
         } catch (err) {
           console.error(err);
           setStatus("Failed");
-          showWarning("Transcription failed. Try the 'Fast' quality setting or local GPU mode.", "error");
-          output.value = "";
+          const isFormat = err.message?.includes("Unable to load audio")
+            || err.message?.includes("EncodingError")
+            || err.message?.includes("decodeAudioData");
+          const msg = isFormat
+            ? `Couldn't decode this .${selectedFile.name.split(".").pop()} file. Try converting to .wav or .mp3, or use Chrome.`
+            : "Transcription failed. Try the 'Fast' quality setting, a different file format (.wav/.mp3), or use local GPU mode.";
+          showWarning(msg, "error");
+          output.value = "Something went wrong. See the error above for suggestions.";
           output.classList.add("placeholder");
-          output.value = "Something went wrong. See browser console (F12) for details.";
           hideProgress();
         } finally {
+          if (audioUrl) URL.revokeObjectURL(audioUrl);
           transcribeBtn.classList.remove("loading");
           transcribeBtn.disabled = false;
           transcribeTxt.textContent = "Transcribe";
