@@ -10,15 +10,15 @@ Usage:
 """
 
 import argparse
-import sys
 import re
+import sys
 from pathlib import Path
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.corrections import get_corrections, get_review_flags
 import config
+from utils.corrections import get_corrections, get_review_flags
 
 
 def apply_corrections(text, corrections):
@@ -41,7 +41,9 @@ def apply_corrections(text, corrections):
             count = corrected_text.count(wrong)
             # Apply correction
             corrected_text = corrected_text.replace(wrong, correct)
-            changes.append(f"  - '{wrong}' → '{correct}' ({count} occurrence{'s' if count > 1 else ''})")
+            changes.append(
+                f"  - '{wrong}' → '{correct}' ({count} occurrence{'s' if count > 1 else ''})"
+            )
 
     return corrected_text, changes
 
@@ -81,13 +83,13 @@ def clean_formatting(text):
         str: Cleaned text
     """
     # Remove excessive newlines (more than 2)
-    text = re.sub(r'\n{3,}', '\n\n', text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
 
     # Fix spacing around punctuation
-    text = re.sub(r'\s+([,.])', r'\1', text)
+    text = re.sub(r"\s+([,.])", r"\1", text)
 
     # Ensure proper spacing after timestamps
-    text = re.sub(r'\[(\d{2}:\d{2}:\d{2})\]([^\s])', r'[\1] \2', text)
+    text = re.sub(r"\[(\d{2}:\d{2}:\d{2})\]([^\s])", r"[\1] \2", text)
 
     return text
 
@@ -106,7 +108,7 @@ def process_transcription(input_file, output_file, report_file, language):
 
     print(f"Reading {lang_name} transcription from {input_file}...")
 
-    with open(input_file, "r", encoding="utf-8") as f:
+    with open(input_file, encoding="utf-8") as f:
         original_text = f.read()
 
     # Get language-specific corrections and flags
@@ -143,7 +145,9 @@ def process_transcription(input_file, output_file, report_file, language):
         f.write("\n## Items Flagged for Manual Review\n\n")
 
         if language == "da":
-            f.write("**Note:** These are English technical terms commonly used in Danish tech interviews.\n")
+            f.write(
+                "**Note:** These are English technical terms commonly used in Danish tech interviews.\n"
+            )
             f.write("Review to confirm they are used correctly in context.\n\n")
 
         if issues:
@@ -156,11 +160,15 @@ def process_transcription(input_file, output_file, report_file, language):
         # Language-specific notes
         if language == "da":
             f.write("\n## Danish Language Notes\n\n")
-            f.write("1. **English Technical Terms:** Many English terms (loading, deploy, debug, etc.) ")
+            f.write(
+                "1. **English Technical Terms:** Many English terms (loading, deploy, debug, etc.) "
+            )
             f.write("are commonly used in Danish tech conversations and may be correct as-is.\n")
             f.write("2. **Gender Agreement:** Check noun-article agreement (en/et, din/dit)\n")
             f.write("3. **Compound Words:** Danish often compounds words - verify hyphenation\n")
-            f.write("4. **Code-Switching:** Interview likely contains mix of Danish and English technical terms\n")
+            f.write(
+                "4. **Code-Switching:** Interview likely contains mix of Danish and English technical terms\n"
+            )
 
         f.write("\n## Recommendations\n\n")
 
@@ -175,12 +183,12 @@ def process_transcription(input_file, output_file, report_file, language):
 
         f.write("4. Verify speaker attribution if applicable\n")
 
-    print("\n" + "="*60)
+    print("\n" + "=" * 60)
     print("Post-processing complete!")
     print(f"Original file: {input_file}")
     print(f"Corrected file: {output_file}")
     print(f"Change report: {report_file}")
-    print("="*60)
+    print("=" * 60)
 
     return output_file, report_file
 
@@ -199,26 +207,21 @@ Examples:
 
   # Custom output location
   python scripts/postprocess.py --input "file.txt" --language da --output "reviewed/"
-        """
+        """,
     )
 
     parser.add_argument(
-        "--input",
-        type=str,
-        required=True,
-        help="Input transcription file to process"
+        "--input", type=str, required=True, help="Input transcription file to process"
     )
     parser.add_argument(
         "--language",
         type=str,
         required=True,
         choices=config.SUPPORTED_LANGUAGES,
-        help="Transcription language (en=English, da=Danish)"
+        help="Transcription language (en=English, da=Danish)",
     )
     parser.add_argument(
-        "--output",
-        type=str,
-        help="Output directory (default: same directory as input file)"
+        "--output", type=str, help="Output directory (default: same directory as input file)"
     )
 
     args = parser.parse_args()

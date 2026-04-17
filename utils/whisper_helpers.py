@@ -3,9 +3,10 @@ Shared Whisper model utilities for transcription
 Provides model loading, timestamp formatting, and transcription functions
 """
 
-from faster_whisper import WhisperModel
 from datetime import timedelta
 from pathlib import Path
+
+from faster_whisper import WhisperModel
 
 
 def format_timestamp(seconds):
@@ -25,7 +26,12 @@ def format_timestamp(seconds):
     return f"{hours:02d}:{minutes:02d}:{secs:02d}"
 
 
-def load_model(model_size="medium", device_preference="cuda", gpu_compute_type="float16", cpu_compute_type="int8"):
+def load_model(
+    model_size="medium",
+    device_preference="cuda",
+    gpu_compute_type="float16",
+    cpu_compute_type="int8",
+):
     """
     Load Whisper model with automatic GPU/CPU fallback
 
@@ -56,7 +62,9 @@ def load_model(model_size="medium", device_preference="cuda", gpu_compute_type="
     return model, "cpu"
 
 
-def transcribe_file(model, audio_file, language="da", beam_size=5, vad_filter=True, word_timestamps=True):
+def transcribe_file(
+    model, audio_file, language="da", beam_size=5, vad_filter=True, word_timestamps=True
+):
     """
     Transcribe a single audio file with the given parameters
 
@@ -82,7 +90,7 @@ def transcribe_file(model, audio_file, language="da", beam_size=5, vad_filter=Tr
         language=language,
         beam_size=beam_size,
         vad_filter=vad_filter,
-        word_timestamps=word_timestamps
+        word_timestamps=word_timestamps,
     )
 
     print(f"  Detected language: {info.language} (probability: {info.language_probability:.2f})")
@@ -98,9 +106,9 @@ def transcribe_file(model, audio_file, language="da", beam_size=5, vad_filter=Tr
 
     # Build info dictionary
     info_dict = {
-        'language': info.language,
-        'language_probability': info.language_probability,
-        'duration': info.duration
+        "language": info.language,
+        "language_probability": info.language_probability,
+        "duration": info.duration,
     }
 
     return formatted_transcription, info_dict
@@ -121,14 +129,16 @@ def save_transcription(transcription, output_path, metadata=None):
     with open(output_path, "w", encoding="utf-8") as f:
         if metadata:
             # Write metadata header
-            if 'audio_file' in metadata:
+            if "audio_file" in metadata:
                 f.write(f"# Transcription of {metadata['audio_file']}\n")
-            if 'interviewer' in metadata and 'interviewee' in metadata:
-                f.write(f"# Interviewer: {metadata['interviewer']} | Interviewee: {metadata['interviewee']}\n")
-            if 'language' in metadata:
-                lang_name = "Danish" if metadata['language'] == "da" else "English"
+            if "interviewer" in metadata and "interviewee" in metadata:
+                f.write(
+                    f"# Interviewer: {metadata['interviewer']} | Interviewee: {metadata['interviewee']}\n"
+                )
+            if "language" in metadata:
+                lang_name = "Danish" if metadata["language"] == "da" else "English"
                 f.write(f"# Language: {lang_name}\n")
-            if 'duration' in metadata:
+            if "duration" in metadata:
                 f.write(f"# Duration: {metadata['duration']:.2f} seconds\n")
             f.write("\n")
 

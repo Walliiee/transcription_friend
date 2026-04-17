@@ -11,7 +11,6 @@ CORRECTIONS_EN = {
     "cloud": "Claude",
     "Cloud": "Claude",
     "BQR": "Bard",
-
     # Common mistranscriptions
     "transfer books": "transcribe this",
     "Transfer books": "Transcribe this",
@@ -19,15 +18,12 @@ CORRECTIONS_EN = {
     "the rapper from Germany": "the report from Gemini",
     "rapper from Gemini": "report from Gemini",
     "the rapper from Gemini": "the report from Gemini",
-
     # Grammar/spelling
     "get bored": "onboard",
     "unboard": "onboard",
     "blah blah blah blah": "etc.",
-
     # Common filler corrections
     "boop, boop, boop, boop, boop, boop, boop": "[onomatopoeia]",
-
     # Technical terms
     "ArtBytes, Meteor": "Arbejdsmiljø",  # Danish: work environment
 }
@@ -40,15 +36,12 @@ CORRECTIONS_DA = {
     "cloud": "Claude",
     "Cloud": "Claude",
     "BQR": "Bard",
-
     # Company/product names
     "Faros A": "Faros AI",
     "faros a": "Faros AI",
-
     # Danish grammar corrections
     "din navn": "dit navn",  # Correct gender agreement (neuter)
     "en kabel": "et kabel",  # Correct gender for "cable"
-
     # Common Danish mistranscriptions
     "kolot": "kolonne",  # Column (technical term)
     "den kolot": "den kolonne",  # The column
@@ -57,7 +50,6 @@ CORRECTIONS_DA = {
     "grænser du så det, eller normaliserer": "renser du så det, eller normaliserer",  # Do you clean/normalize it
     "grænserne hinne": "grænserne henne",  # The boundaries there/over there
     "Cloud Codes": "Cloud Code",  # Google Cloud Code (product name)
-
     # Common filler corrections
     "boop, boop, boop, boop, boop, boop, boop": "[onomatopoeia]",
 }

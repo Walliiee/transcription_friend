@@ -1,5 +1,5 @@
-from faster_whisper import WhisperModel
 import torch
+from faster_whisper import WhisperModel
 
 print("Checking GPU availability...")
 print(f"CUDA available: {torch.cuda.is_available()}")

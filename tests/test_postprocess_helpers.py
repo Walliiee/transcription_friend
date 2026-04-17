@@ -1,6 +1,5 @@
-from pathlib import Path
 import importlib.util
-
+from pathlib import Path
 
 _MODULE_PATH = Path(__file__).resolve().parents[1] / "scripts" / "postprocess.py"
 _SPEC = importlib.util.spec_from_file_location("postprocess_module", _MODULE_PATH)

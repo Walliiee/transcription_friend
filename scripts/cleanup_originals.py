@@ -2,7 +2,7 @@
 """
 Quick cleanup script to delete original transcription files, keeping only reviewed versions
 """
-import os
+
 from pathlib import Path
 
 # Find all transcription files

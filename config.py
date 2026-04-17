@@ -42,10 +42,10 @@ DEFAULT_INTERVIEWER = "Alex"
 
 # Hardware Information
 GPU_INFO = {
-    'model': 'NVIDIA GeForce RTX 5060 Laptop GPU',
-    'compute_capability': 'sm_120',
-    'cuda_version': '12.0',
-    'notes': 'Requires PyTorch with CUDA 12.8+ for sm_120 support'
+    "model": "NVIDIA GeForce RTX 5060 Laptop GPU",
+    "compute_capability": "sm_120",
+    "cuda_version": "12.0",
+    "notes": "Requires PyTorch with CUDA 12.8+ for sm_120 support",
 }
 
 
@@ -66,11 +66,11 @@ def get_interview_paths(name, base_dir=None):
     interview_dir = base_dir / "interviews" / name
 
     return {
-        'base': interview_dir,
-        'audio': interview_dir / AUDIO_SUBDIR,
-        'audio_segments': interview_dir / AUDIO_SUBDIR / SEGMENTS_SUBDIR,
-        'transcriptions': interview_dir / TRANSCRIPTION_SUBDIR,
-        'transcription_segments': interview_dir / TRANSCRIPTION_SUBDIR / SEGMENTS_SUBDIR,
+        "base": interview_dir,
+        "audio": interview_dir / AUDIO_SUBDIR,
+        "audio_segments": interview_dir / AUDIO_SUBDIR / SEGMENTS_SUBDIR,
+        "transcriptions": interview_dir / TRANSCRIPTION_SUBDIR,
+        "transcription_segments": interview_dir / TRANSCRIPTION_SUBDIR / SEGMENTS_SUBDIR,
     }
 
 

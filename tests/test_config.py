@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import config
 
 
@@ -19,5 +17,11 @@ def test_get_interview_paths_uses_expected_structure(tmp_path):
 
 def test_get_output_filename_variants():
     assert config.get_output_filename("Bob", "da") == "Bob_transcription_da.txt"
-    assert config.get_output_filename("Bob", "da", reviewed=True) == "Bob_transcription_da_reviewed.txt"
-    assert config.get_output_filename("Bob", "da", is_report=True) == "Bob_transcription_da_review_report.txt"
+    assert (
+        config.get_output_filename("Bob", "da", reviewed=True)
+        == "Bob_transcription_da_reviewed.txt"
+    )
+    assert (
+        config.get_output_filename("Bob", "da", is_report=True)
+        == "Bob_transcription_da_review_report.txt"
+    )

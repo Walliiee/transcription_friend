@@ -16,8 +16,8 @@ from pathlib import Path
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from utils.whisper_helpers import load_model, transcribe_file, save_transcription, format_timestamp
 import config
+from utils.whisper_helpers import load_model, save_transcription, transcribe_file
 
 
 def transcribe_single_file(model, audio_file, language, name, interviewer=None, output_dir=None):
@@ -39,7 +39,7 @@ def transcribe_single_file(model, audio_file, language, name, interviewer=None, 
         language=language,
         beam_size=config.BEAM_SIZE,
         vad_filter=config.VAD_FILTER,
-        word_timestamps=config.WORD_TIMESTAMPS
+        word_timestamps=config.WORD_TIMESTAMPS,
     )
 
     # Determine output path
@@ -50,19 +50,19 @@ def transcribe_single_file(model, audio_file, language, name, interviewer=None, 
 
     # Prepare metadata
     metadata = {
-        'audio_file': audio_file.name,
-        'language': language,
-        'duration': info['duration'],
-        'interviewee': name,
-        'interviewer': interviewer or config.DEFAULT_INTERVIEWER,
+        "audio_file": audio_file.name,
+        "language": language,
+        "duration": info["duration"],
+        "interviewee": name,
+        "interviewer": interviewer or config.DEFAULT_INTERVIEWER,
     }
 
     # Save transcription
     save_transcription(transcription, output_file, metadata)
 
     # Show preview
-    preview_lines = transcription.split('\n')[:2]
-    preview = '\n  '.join(preview_lines)
+    preview_lines = transcription.split("\n")[:2]
+    preview = "\n  ".join(preview_lines)
     print(f"  Preview:\n  {preview}\n")
 
     return output_file, transcription, info
@@ -84,7 +84,7 @@ def transcribe_segments(model, segment_pattern, language, name, interviewer=None
         tuple: (combined_file_path, segment_files_list)
     """
     # Find all segment files
-    audio_files = sorted(Path(".").glob(segment_pattern))
+    audio_files = sorted(Path().glob(segment_pattern))
 
     if not audio_files:
         print(f"Error: No files found matching pattern '{segment_pattern}'")
@@ -104,15 +104,15 @@ def transcribe_segments(model, segment_pattern, language, name, interviewer=None
             language=language,
             beam_size=config.BEAM_SIZE,
             vad_filter=config.VAD_FILTER,
-            word_timestamps=config.WORD_TIMESTAMPS
+            word_timestamps=config.WORD_TIMESTAMPS,
         )
 
         # Save individual segment
         segment_output = audio_file.stem + config.TRANSCRIPTION_SUFFIX + ".txt"
         metadata = {
-            'audio_file': audio_file.name,
-            'language': language,
-            'duration': info['duration']
+            "audio_file": audio_file.name,
+            "language": language,
+            "duration": info["duration"],
         }
         save_transcription(transcription, segment_output, metadata)
 
@@ -120,7 +120,7 @@ def transcribe_segments(model, segment_pattern, language, name, interviewer=None
         segment_files.append(segment_output)
 
         # Show preview
-        preview = transcription.split('\n')[0] if transcription else ""
+        preview = transcription.split("\n")[0] if transcription else ""
         print(f"  Preview: {preview[:80]}...\n")
 
     # Create combined transcription
@@ -148,7 +148,7 @@ def transcribe_segments(model, segment_pattern, language, name, interviewer=None
             f.write("\n\n" + "=" * 60 + "\n\n")
 
     print(f"✓ Combined transcription saved to {combined_file}")
-    print(f"\nAll done! Created files:")
+    print("\nAll done! Created files:")
     for sf in segment_files:
         print(f"  - {sf}")
     print(f"  - {combined_file}")
@@ -173,35 +173,28 @@ Examples:
 
   # CPU-only mode
   python scripts/transcribe.py --audio "audio.m4a" --name Person --language da --device cpu
-        """
+        """,
     )
 
     # Input options (mutually exclusive)
     input_group = parser.add_mutually_exclusive_group(required=True)
-    input_group.add_argument(
-        "--audio",
-        type=str,
-        help="Single audio file to transcribe"
-    )
+    input_group.add_argument("--audio", type=str, help="Single audio file to transcribe")
     input_group.add_argument(
         "--segments",
         type=str,
-        help="Glob pattern for audio segments (e.g., 'Person_segment_*.m4a')"
+        help="Glob pattern for audio segments (e.g., 'Person_segment_*.m4a')",
     )
 
     # Required arguments
     parser.add_argument(
-        "--name",
-        type=str,
-        required=True,
-        help="Interviewee name (used in output filename)"
+        "--name", type=str, required=True, help="Interviewee name (used in output filename)"
     )
     parser.add_argument(
         "--language",
         type=str,
         required=True,
         choices=config.SUPPORTED_LANGUAGES,
-        help="Transcription language"
+        help="Transcription language",
     )
 
     # Optional arguments
@@ -209,26 +202,22 @@ Examples:
         "--interviewer",
         type=str,
         default=config.DEFAULT_INTERVIEWER,
-        help=f"Interviewer name (default: {config.DEFAULT_INTERVIEWER})"
+        help=f"Interviewer name (default: {config.DEFAULT_INTERVIEWER})",
     )
-    parser.add_argument(
-        "--output",
-        type=str,
-        help="Output directory (default: current directory)"
-    )
+    parser.add_argument("--output", type=str, help="Output directory (default: current directory)")
     parser.add_argument(
         "--model",
         type=str,
         default=config.DEFAULT_MODEL,
         choices=["tiny", "base", "small", "medium", "large"],
-        help=f"Whisper model size (default: {config.DEFAULT_MODEL})"
+        help=f"Whisper model size (default: {config.DEFAULT_MODEL})",
     )
     parser.add_argument(
         "--device",
         type=str,
         default=config.DEFAULT_DEVICE,
         choices=["cuda", "cpu"],
-        help=f"Device to use (default: {config.DEFAULT_DEVICE})"
+        help=f"Device to use (default: {config.DEFAULT_DEVICE})",
     )
 
     args = parser.parse_args()
@@ -243,7 +232,7 @@ Examples:
         model_size=args.model,
         device_preference=args.device,
         gpu_compute_type=config.GPU_COMPUTE_TYPE,
-        cpu_compute_type=config.CPU_COMPUTE_TYPE
+        cpu_compute_type=config.CPU_COMPUTE_TYPE,
     )
 
     print(f"Device: {device_used}")
@@ -259,29 +248,23 @@ Examples:
             sys.exit(1)
 
         output_file, _, _ = transcribe_single_file(
-            model,
-            audio_file,
-            args.language,
-            args.name,
-            args.interviewer,
-            output_dir
+            model, audio_file, args.language, args.name, args.interviewer, output_dir
         )
 
         print(f"\n[OK] Transcription complete: {output_file}")
-        print("\nNote: You may need to manually review and add speaker labels based on the content.")
+        print(
+            "\nNote: You may need to manually review and add speaker labels based on the content."
+        )
 
     else:
         # Multiple segments
-        combined_file, segment_files = transcribe_segments(
-            model,
-            args.segments,
-            args.language,
-            args.name,
-            args.interviewer,
-            output_dir
+        _combined_file, _segment_files = transcribe_segments(
+            model, args.segments, args.language, args.name, args.interviewer, output_dir
         )
 
-        print("\nNote: You may need to manually review and add speaker labels based on the content.")
+        print(
+            "\nNote: You may need to manually review and add speaker labels based on the content."
+        )
 
 
 if __name__ == "__main__":

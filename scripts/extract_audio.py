@@ -24,11 +24,11 @@ Examples:
 """
 
 import argparse
+import json
 import subprocess
 import sys
-import json
 from pathlib import Path
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
 
 def check_ffmpeg_installed() -> bool:
@@ -39,18 +39,8 @@ def check_ffmpeg_installed() -> bool:
         bool: True if both ffmpeg and ffprobe are available
     """
     try:
-        subprocess.run(
-            ["ffmpeg", "-version"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True
-        )
-        subprocess.run(
-            ["ffprobe", "-version"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            check=True
-        )
+        subprocess.run(["ffmpeg", "-version"], capture_output=True, check=True)
+        subprocess.run(["ffprobe", "-version"], capture_output=True, check=True)
         return True
     except (subprocess.CalledProcessError, FileNotFoundError):
         return False
@@ -70,16 +60,19 @@ def is_video_file(file_path: Path) -> Tuple[bool, Optional[str]]:
         result = subprocess.run(
             [
                 "ffprobe",
-                "-v", "error",
-                "-select_streams", "v:0",
-                "-show_entries", "stream=codec_type",
-                "-of", "json",
-                str(file_path)
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=codec_type",
+                "-of",
+                "json",
+                str(file_path),
             ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             check=True,
-            text=True
+            text=True,
         )
 
         data = json.loads(result.stdout)
@@ -95,10 +88,12 @@ def is_video_file(file_path: Path) -> Tuple[bool, Optional[str]]:
     except json.JSONDecodeError:
         return False, "Could not parse ffprobe output"
     except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
+        return False, f"Unexpected error: {e!s}"
 
 
-def extract_audio(input_file: Path, output_file: Path, verbose: bool = True) -> Tuple[bool, Optional[str]]:
+def extract_audio(
+    input_file: Path, output_file: Path, verbose: bool = True
+) -> Tuple[bool, Optional[str]]:
     """
     Extract audio from video file using ffmpeg
     Uses codec copy for fast, lossless extraction
@@ -122,38 +117,44 @@ def extract_audio(input_file: Path, output_file: Path, verbose: bool = True) -> 
         result = subprocess.run(
             [
                 "ffmpeg",
-                "-i", str(input_file),
+                "-i",
+                str(input_file),
                 "-vn",  # No video
-                "-acodec", "copy",  # Copy audio codec (fast, lossless)
+                "-acodec",
+                "copy",  # Copy audio codec (fast, lossless)
                 "-y",  # Overwrite output
-                str(output_file)
+                str(output_file),
             ],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True
+            capture_output=True,
+            text=True,
         )
 
         # ffmpeg writes progress to stderr, so we check returncode instead
         if result.returncode != 0:
             # Check if error is due to codec incompatibility
-            if "does not support codec" in result.stderr or "Could not write header" in result.stderr:
+            if (
+                "does not support codec" in result.stderr
+                or "Could not write header" in result.stderr
+            ):
                 if verbose:
-                    print(f"  Codec copy failed, re-encoding to AAC...")
+                    print("  Codec copy failed, re-encoding to AAC...")
 
                 # Fallback: re-encode to AAC
                 result = subprocess.run(
                     [
                         "ffmpeg",
-                        "-i", str(input_file),
+                        "-i",
+                        str(input_file),
                         "-vn",
-                        "-acodec", "aac",
-                        "-b:a", "192k",  # 192 kbps bitrate
+                        "-acodec",
+                        "aac",
+                        "-b:a",
+                        "192k",  # 192 kbps bitrate
                         "-y",
-                        str(output_file)
+                        str(output_file),
                     ],
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
+                    capture_output=True,
+                    text=True,
                 )
 
                 if result.returncode != 0:
@@ -167,10 +168,12 @@ def extract_audio(input_file: Path, output_file: Path, verbose: bool = True) -> 
         return True, None
 
     except Exception as e:
-        return False, f"Unexpected error: {str(e)}"
+        return False, f"Unexpected error: {e!s}"
 
 
-def process_single_file(input_file: Path, output_dir: Optional[Path] = None) -> Tuple[bool, Optional[Path]]:
+def process_single_file(
+    input_file: Path, output_dir: Optional[Path] = None
+) -> Tuple[bool, Optional[Path]]:
     """
     Process a single video file
 
@@ -227,7 +230,7 @@ def process_batch(pattern: str, output_dir: Optional[Path] = None) -> Tuple[int,
         tuple: (success_count: int, fail_count: int, output_files: List[Path])
     """
     # Find all matching files
-    files = sorted(Path(".").glob(pattern))
+    files = sorted(Path().glob(pattern))
 
     if not files:
         print(f"Error: No files found matching pattern '{pattern}'")
@@ -278,29 +281,19 @@ Output:
   - By default, files are saved in the same directory as the input
   - Use --output to specify a different output directory
   - Audio is extracted using codec copy (fast) or AAC encoding (fallback)
-        """
+        """,
     )
 
     # Input options (mutually exclusive)
     input_group = parser.add_mutually_exclusive_group(required=True)
+    input_group.add_argument("input_file", nargs="?", type=str, help="Input video file to process")
     input_group.add_argument(
-        "input_file",
-        nargs="?",
-        type=str,
-        help="Input video file to process"
-    )
-    input_group.add_argument(
-        "--batch",
-        type=str,
-        help="Glob pattern for batch processing (e.g., 'videos/*.mp4')"
+        "--batch", type=str, help="Glob pattern for batch processing (e.g., 'videos/*.mp4')"
     )
 
     # Optional arguments
     parser.add_argument(
-        "--output",
-        "-o",
-        type=str,
-        help="Output directory (default: same directory as input file)"
+        "--output", "-o", type=str, help="Output directory (default: same directory as input file)"
     )
 
     args = parser.parse_args()
@@ -326,7 +319,7 @@ Output:
 
         # Print summary
         print("=" * 60)
-        print(f"Batch processing complete!")
+        print("Batch processing complete!")
         print(f"  Successful: {success_count}")
         print(f"  Failed: {fail_count}")
         print(f"  Total: {success_count + fail_count}")
